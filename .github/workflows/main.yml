@@ -1,4 +1,4 @@
-dname: Debug & Deploy (Docker → ECR)
+name: Debug & Deploy (Docker → ECR)
 
 on:
   push:
