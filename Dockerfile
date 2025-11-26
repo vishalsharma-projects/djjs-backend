@@ -28,6 +28,9 @@ COPY --from=builder /app/main .
 # Copy .env from host → container
 COPY .env .env
 
+# Copy docs directory for Swagger
+COPY --from=builder /app/docs ./docs
+
 # Create a non-root user
 RUN adduser -D appuser
 USER appuser
