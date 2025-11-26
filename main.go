@@ -56,11 +56,11 @@ func main() {
 
 	// Enable CORS for Angular frontend
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:4200"}, // Angular dev server
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"*"},
 		ExposeHeaders:    []string{"Content-Length", "Authorization"},
-		AllowCredentials: true,
+		AllowCredentials: false, // must be false if AllowOrigins = "*"
 		MaxAge:           12 * time.Hour,
 	}))
 

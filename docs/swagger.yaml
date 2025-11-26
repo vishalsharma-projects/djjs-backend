@@ -442,7 +442,7 @@ definitions:
       volunteer_name:
         type: string
     type: object
-host: localhost:8080
+host: eventsreportingapi.djjs.org
 info:
   contact:
     email: vaish@gmail.com
