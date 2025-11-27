@@ -536,6 +536,7 @@ definitions:
       branch:
         $ref: '#/definitions/models.Branch'
       branch_id:
+        minimum: 1
         type: integer
       created_by:
         type: string
@@ -544,23 +545,34 @@ definitions:
       event:
         $ref: '#/definitions/models.Event'
       event_id:
+        minimum: 1
         type: integer
       id:
         type: integer
       mention_seva:
+        maxLength: 500
+        minLength: 2
         type: string
       number_of_days:
+        maximum: 365
+        minimum: 0
         type: integer
-      search_volunteer:
-        type: string
       seva_involved:
+        maxLength: 500
+        minLength: 2
         type: string
       updated_by:
         type: string
       updated_on:
         type: string
       volunteer_name:
+        maxLength: 255
+        minLength: 2
         type: string
+    required:
+    - branch_id
+    - event_id
+    - volunteer_name
     type: object
 host: eventsreportingapi.djjs.org
 info:
@@ -1886,7 +1898,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Volunteer'
+            items:
+              $ref: '#/definitions/models.Volunteer'
+            type: array
         "400":
           description: Bad Request
           schema:
@@ -1901,7 +1915,7 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Get volunteer by event ID
+      summary: Get volunteers by event ID
       tags:
       - Volunteers
   /api/events/{id}:

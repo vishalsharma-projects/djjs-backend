@@ -2127,7 +2127,7 @@ const docTemplate = `{
                 "tags": [
                     "Volunteers"
                 ],
-                "summary": "Get volunteer by event ID",
+                "summary": "Get volunteers by event ID",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2141,7 +2141,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Volunteer"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Volunteer"
+                            }
                         }
                     },
                     "400": {
@@ -4325,12 +4328,18 @@ const docTemplate = `{
         },
         "models.Volunteer": {
             "type": "object",
+            "required": [
+                "branch_id",
+                "event_id",
+                "volunteer_name"
+            ],
             "properties": {
                 "branch": {
                     "$ref": "#/definitions/models.Branch"
                 },
                 "branch_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "created_by": {
                     "type": "string"
@@ -4342,22 +4351,26 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.Event"
                 },
                 "event_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "id": {
                     "type": "integer"
                 },
                 "mention_seva": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 2
                 },
                 "number_of_days": {
-                    "type": "integer"
-                },
-                "search_volunteer": {
-                    "type": "string"
+                    "type": "integer",
+                    "maximum": 365,
+                    "minimum": 0
                 },
                 "seva_involved": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 2
                 },
                 "updated_by": {
                     "type": "string"
@@ -4366,7 +4379,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "volunteer_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 }
             }
         }
