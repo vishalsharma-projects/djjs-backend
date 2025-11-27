@@ -42,16 +42,23 @@ definitions:
   models.Branch:
     properties:
       aashram_area:
+        minimum: 0
         type: number
       address:
+        maxLength: 500
         type: string
       city:
+        maxLength: 100
         type: string
       contact_number:
+        maxLength: 20
         type: string
       coordinator_name:
+        maxLength: 255
+        minLength: 2
         type: string
       country:
+        maxLength: 100
         type: string
       created_by:
         type: string
@@ -62,38 +69,50 @@ definitions:
       daily_start_time:
         type: string
       district:
+        maxLength: 100
         type: string
       email:
+        maxLength: 255
         type: string
       established_on:
         type: string
       id:
         type: integer
       name:
+        maxLength: 255
+        minLength: 2
         type: string
       open_days:
-        description: e.g. "Mon-Fri"
+        maxLength: 100
         type: string
       pincode:
         type: string
       police_station:
+        maxLength: 100
         type: string
       post_office:
+        maxLength: 100
         type: string
       state:
+        maxLength: 100
         type: string
       updated_by:
         type: string
       updated_on:
         type: string
+    required:
+    - contact_number
+    - name
     type: object
   models.BranchInfrastructure:
     properties:
       branch:
         $ref: '#/definitions/models.Branch'
       branch_id:
+        minimum: 1
         type: integer
       count:
+        minimum: 0
         type: integer
       created_by:
         type: string
@@ -102,21 +121,31 @@ definitions:
       id:
         type: integer
       type:
+        maxLength: 100
+        minLength: 2
         type: string
       updated_by:
         type: string
       updated_on:
         type: string
+    required:
+    - branch_id
+    - count
+    - type
     type: object
   models.BranchMember:
     properties:
       age:
+        maximum: 150
+        minimum: 0
         type: integer
       branch:
         $ref: '#/definitions/models.Branch'
       branch_id:
+        minimum: 1
         type: integer
       branch_role:
+        maxLength: 100
         type: string
       created_by:
         type: string
@@ -129,17 +158,27 @@ definitions:
       id:
         type: integer
       member_type:
+        maxLength: 100
+        minLength: 2
         type: string
       name:
+        maxLength: 255
+        minLength: 2
         type: string
       qualification:
+        maxLength: 255
         type: string
       responsibility:
+        maxLength: 500
         type: string
       updated_by:
         type: string
       updated_on:
         type: string
+    required:
+    - branch_id
+    - member_type
+    - name
     type: object
   models.City:
     properties:

@@ -10,6 +10,20 @@ import (
 
 // CreateBranch inserts a new branch record
 func CreateBranch(branch *models.Branch) error {
+	// Check email uniqueness if provided
+	if branch.Email != "" {
+		var existingBranch models.Branch
+		if err := config.DB.Where("email = ?", branch.Email).First(&existingBranch).Error; err == nil {
+			return errors.New("email already exists")
+		}
+	}
+
+	// Check contact number uniqueness
+	var existingBranch models.Branch
+	if err := config.DB.Where("contact_number = ?", branch.ContactNumber).First(&existingBranch).Error; err == nil {
+		return errors.New("contact number already exists")
+	}
+
 	branch.CreatedOn = time.Now()
 	branch.UpdatedOn = nil
 
@@ -57,6 +71,22 @@ func UpdateBranch(branchID uint, updatedData map[string]interface{}) error {
 	var branch models.Branch
 	if err := config.DB.First(&branch, branchID).Error; err != nil {
 		return errors.New("branch not found")
+	}
+
+	// Check email uniqueness if email is being updated
+	if email, ok := updatedData["email"]; ok {
+		var existingBranch models.Branch
+		if err := config.DB.Where("email = ? AND id != ?", email, branchID).First(&existingBranch).Error; err == nil {
+			return errors.New("email already exists")
+		}
+	}
+
+	// Check contact number uniqueness if being updated
+	if contactNumber, ok := updatedData["contact_number"]; ok {
+		var existingBranch models.Branch
+		if err := config.DB.Where("contact_number = ? AND id != ?", contactNumber, branchID).First(&existingBranch).Error; err == nil {
+			return errors.New("contact number already exists")
+		}
 	}
 
 	now := time.Now()

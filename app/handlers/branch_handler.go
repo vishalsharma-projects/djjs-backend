@@ -6,6 +6,7 @@ import (
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
+	"github.com/followCode/djjs-event-reporting-backend/app/validators"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,6 +24,12 @@ import (
 func CreateBranchHandler(c *gin.Context) {
 	var branch models.Branch
 	if err := c.ShouldBindJSON(&branch); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate branch input
+	if err := validators.ValidateBranchInput(branch.Name, branch.Email, branch.ContactNumber, branch.CoordinatorName); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -105,6 +112,12 @@ func UpdateBranchHandler(c *gin.Context) {
 		return
 	}
 
+	// Validate update fields
+	if err := validators.ValidateBranchUpdateFields(updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := services.UpdateBranch(uint(branchID), updateData); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -156,6 +169,12 @@ func DeleteBranchHandler(c *gin.Context) {
 func CreateBranchInfrastructureHandler(c *gin.Context) {
 	var infra models.BranchInfrastructure
 	if err := c.ShouldBindJSON(&infra); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate infrastructure input
+	if err := validators.ValidateBranchInfrastructure(infra.BranchID, infra.Type, infra.Count); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -299,6 +318,12 @@ func CreateBranchMemberHandler(c *gin.Context) {
 		return
 	}
 
+	// Validate branch member input
+	if err := validators.ValidateBranchMember(member.Name, member.MemberType, member.BranchID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := services.CreateBranchMember(&member); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -376,6 +401,12 @@ func UpdateBranchMemberHandler(c *gin.Context) {
 
 	var updateData map[string]interface{}
 	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate update fields
+	if err := validators.ValidateBranchMemberUpdateFields(updateData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

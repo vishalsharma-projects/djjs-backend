@@ -3596,24 +3596,35 @@ const docTemplate = `{
         },
         "models.Branch": {
             "type": "object",
+            "required": [
+                "contact_number",
+                "name"
+            ],
             "properties": {
                 "aashram_area": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "address": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500
                 },
                 "city": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "contact_number": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 20
                 },
                 "coordinator_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "country": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "created_by": {
                     "type": "string"
@@ -3628,10 +3639,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "district": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "established_on": {
                     "type": "string"
@@ -3640,23 +3653,28 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "open_days": {
-                    "description": "e.g. \"Mon-Fri\"",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "pincode": {
                     "type": "string"
                 },
                 "police_station": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "post_office": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "state": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "updated_by": {
                     "type": "string"
@@ -3668,15 +3686,22 @@ const docTemplate = `{
         },
         "models.BranchInfrastructure": {
             "type": "object",
+            "required": [
+                "branch_id",
+                "count",
+                "type"
+            ],
             "properties": {
                 "branch": {
                     "$ref": "#/definitions/models.Branch"
                 },
                 "branch_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "count": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "created_by": {
                     "type": "string"
@@ -3688,7 +3713,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
                 },
                 "updated_by": {
                     "type": "string"
@@ -3700,18 +3727,27 @@ const docTemplate = `{
         },
         "models.BranchMember": {
             "type": "object",
+            "required": [
+                "branch_id",
+                "member_type",
+                "name"
+            ],
             "properties": {
                 "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 150,
+                    "minimum": 0
                 },
                 "branch": {
                     "$ref": "#/definitions/models.Branch"
                 },
                 "branch_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "branch_role": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "created_by": {
                     "type": "string"
@@ -3729,16 +3765,22 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "member_type": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "qualification": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "responsibility": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500
                 },
                 "updated_by": {
                     "type": "string"
