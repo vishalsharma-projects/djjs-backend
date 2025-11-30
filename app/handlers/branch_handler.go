@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
@@ -10,21 +11,174 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// BranchCreateRequest represents the request payload for creating a branch
+// Supports both old format (country, state, district, city as strings) and new format (country_id, state_id, etc. as integers)
+type BranchCreateRequest struct {
+	Name            string   `json:"name" binding:"required"`
+	Email           string   `json:"email,omitempty"`
+	CoordinatorName string   `json:"coordinator_name,omitempty"`
+	ContactNumber   string   `json:"contact_number" binding:"required"`
+	EstablishedOn   *string  `json:"established_on,omitempty"`
+	AashramArea     *float64 `json:"aashram_area,omitempty"`
+
+	// Support both old format (strings) and new format (integers)
+	Country    interface{} `json:"country,omitempty"`  // Can be string or number
+	State      interface{} `json:"state,omitempty"`    // Can be string or number
+	District   interface{} `json:"district,omitempty"` // Can be string or number
+	City       interface{} `json:"city,omitempty"`     // Can be string or number
+	CountryID  *uint       `json:"country_id,omitempty"`
+	StateID    *uint       `json:"state_id,omitempty"`
+	DistrictID *uint       `json:"district_id,omitempty"`
+	CityID     *uint       `json:"city_id,omitempty"`
+
+	Address        string `json:"address,omitempty"`
+	Pincode        string `json:"pincode,omitempty"`
+	PostOffice     string `json:"post_office,omitempty"`
+	PoliceStation  string `json:"police_station,omitempty"`
+	OpenDays       string `json:"open_days,omitempty"`
+	DailyStartTime string `json:"daily_start_time,omitempty"`
+	DailyEndTime   string `json:"daily_end_time,omitempty"`
+	CreatedBy      string `json:"created_by,omitempty"`
+	UpdatedBy      string `json:"updated_by,omitempty"`
+}
+
+// ToBranch converts the request to a Branch model
+func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
+	branch := &models.Branch{
+		Name:            r.Name,
+		Email:           r.Email,
+		CoordinatorName: r.CoordinatorName,
+		ContactNumber:   r.ContactNumber,
+		AashramArea:     0,
+		Address:         r.Address,
+		Pincode:         r.Pincode,
+		PostOffice:      r.PostOffice,
+		PoliceStation:   r.PoliceStation,
+		OpenDays:        r.OpenDays,
+		DailyStartTime:  r.DailyStartTime,
+		DailyEndTime:    r.DailyEndTime,
+		CreatedBy:       r.CreatedBy,
+		UpdatedBy:       r.UpdatedBy,
+	}
+
+	if r.AashramArea != nil {
+		branch.AashramArea = *r.AashramArea
+	}
+
+	// Parse EstablishedOn if provided
+	if r.EstablishedOn != nil && *r.EstablishedOn != "" {
+		establishedOn, err := parseTime(*r.EstablishedOn)
+		if err == nil {
+			branch.EstablishedOn = &establishedOn
+		}
+	}
+
+	// Handle country - support both old format (string) and new format (number)
+	if r.CountryID != nil {
+		branch.CountryID = r.CountryID
+	} else if r.Country != nil {
+		countryID, err := parseID(r.Country)
+		if err == nil && countryID > 0 {
+			id := uint(countryID)
+			branch.CountryID = &id
+		}
+	}
+
+	// Handle state - support both old format (string) and new format (number)
+	if r.StateID != nil {
+		branch.StateID = r.StateID
+	} else if r.State != nil {
+		stateID, err := parseID(r.State)
+		if err == nil && stateID > 0 {
+			id := uint(stateID)
+			branch.StateID = &id
+		}
+	}
+
+	// Handle district - support both old format (string) and new format (number)
+	if r.DistrictID != nil {
+		branch.DistrictID = r.DistrictID
+	} else if r.District != nil {
+		districtID, err := parseID(r.District)
+		if err == nil && districtID > 0 {
+			id := uint(districtID)
+			branch.DistrictID = &id
+		}
+	}
+
+	// Handle city - support both old format (string) and new format (number)
+	if r.CityID != nil {
+		branch.CityID = r.CityID
+	} else if r.City != nil {
+		cityID, err := parseID(r.City)
+		if err == nil && cityID > 0 {
+			id := uint(cityID)
+			branch.CityID = &id
+		}
+	}
+
+	return branch, nil
+}
+
+// parseID converts various types to uint
+func parseID(value interface{}) (uint, error) {
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return 0, nil
+		}
+		parsed, err := strconv.ParseUint(v, 10, 32)
+		return uint(parsed), err
+	case float64:
+		return uint(v), nil
+	case int:
+		return uint(v), nil
+	case uint:
+		return v, nil
+	default:
+		return 0, nil
+	}
+}
+
+// parseTime parses time string
+func parseTime(timeStr string) (time.Time, error) {
+	layouts := []string{
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02",
+		time.RFC3339,
+	}
+
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, timeStr); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, nil // Return zero time and nil error if parsing fails (optional field)
+}
+
 // CreateBranchHandler godoc
 // @Summary Create a new branch
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param branch body models.Branch true "Branch payload"
+// @Param branch body BranchCreateRequest true "Branch payload"
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/branches [post]
 func CreateBranchHandler(c *gin.Context) {
-	var branch models.Branch
-	if err := c.ShouldBindJSON(&branch); err != nil {
+	var req BranchCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert request to Branch model
+	branch, err := req.ToBranch()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
 		return
 	}
 
@@ -34,7 +188,7 @@ func CreateBranchHandler(c *gin.Context) {
 		return
 	}
 
-	if err := services.CreateBranch(&branch); err != nil {
+	if err := services.CreateBranch(branch); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
