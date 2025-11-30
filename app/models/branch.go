@@ -11,10 +11,14 @@ type Branch struct {
 	ContactNumber   string     `gorm:"unique;not null" json:"contact_number" validate:"required,max=20"`
 	EstablishedOn   *time.Time `json:"established_on,omitempty"`
 	AashramArea     float64    `json:"aashram_area,omitempty" validate:"omitempty,min=0"`
-	Country         string     `json:"country,omitempty" validate:"omitempty,max=100"`
-	State           string     `json:"state,omitempty" validate:"omitempty,max=100"`
-	District        string     `json:"district,omitempty" validate:"omitempty,max=100"`
-	City            string     `json:"city,omitempty" validate:"omitempty,max=100"`
+	CountryID       *uint      `gorm:"column:country_id" json:"country_id" validate:"omitempty,min=1"`
+	Country         Country    `gorm:"foreignKey:CountryID" json:"country,omitempty"`
+	StateID         *uint      `gorm:"column:state_id" json:"state_id" validate:"omitempty,min=1"`
+	State           State      `gorm:"foreignKey:StateID" json:"state,omitempty"`
+	DistrictID      *uint      `gorm:"column:district_id" json:"district_id" validate:"omitempty,min=1"`
+	District        District   `gorm:"foreignKey:DistrictID" json:"district,omitempty"`
+	CityID          *uint      `gorm:"column:city_id" json:"city_id" validate:"omitempty,min=1"`
+	City            City       `gorm:"foreignKey:CityID" json:"city,omitempty"`
 	Address         string     `json:"address,omitempty" validate:"omitempty,max=500"`
 	Pincode         string     `json:"pincode,omitempty" validate:"omitempty,numeric,len=5|len=6"`
 	PostOffice      string     `json:"post_office,omitempty" validate:"omitempty,max=100"`
