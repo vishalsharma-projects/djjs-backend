@@ -6,6 +6,7 @@ import (
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
+	"github.com/followCode/djjs-event-reporting-backend/app/validators"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +25,11 @@ import (
 func CreatePromotionMaterialDetailsHandler(c *gin.Context) {
 	var detail models.PromotionMaterialDetails
 	if err := c.ShouldBindJSON(&detail); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validators.ValidatePromotionMaterialDetailsInput(detail.EventID, detail.PromotionMaterialID, detail.Quantity); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -111,6 +117,18 @@ func UpdatePromotionMaterialDetailsHandler(c *gin.Context) {
 
 	var detail models.PromotionMaterialDetails
 	if err := c.ShouldBindJSON(&detail); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to map for validation
+	var updateData map[string]interface{}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validators.ValidatePromotionMaterialDetailsUpdateFields(updateData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

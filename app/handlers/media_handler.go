@@ -6,6 +6,7 @@ import (
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
+	"github.com/followCode/djjs-event-reporting-backend/app/validators"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +25,11 @@ import (
 func CreateEventMediaHandler(c *gin.Context) {
 	var media models.EventMedia
 	if err := c.ShouldBindJSON(&media); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validators.ValidateEventMediaInput(media.EventID, media.MediaCoverageTypeID, media.CompanyName, media.FirstName, media.LastName); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -114,6 +120,18 @@ func UpdateEventMediaHandler(c *gin.Context) {
 
 	var media models.EventMedia
 	if err := c.ShouldBindJSON(&media); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to map for validation
+	var updateData map[string]interface{}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validators.ValidateEventMediaUpdateFields(updateData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -161,6 +161,44 @@ func ValidateBranchMember(name, memberType string, branchID uint) error {
 	return nil
 }
 
+// ValidateBranchInfrastructureUpdateFields validates branch infrastructure update
+func ValidateBranchInfrastructureUpdateFields(updateData map[string]interface{}) error {
+	// List of fields that should not be updated
+	immutableFields := map[string]bool{
+		"id":         true,
+		"created_on": true,
+		"created_by": true,
+		"branch_id":  true, // branch should not be changed via update
+		"branch":     true, // branch relation should not be changed
+	}
+
+	for field := range updateData {
+		if immutableFields[field] {
+			return errors.New("field '" + field + "' cannot be updated")
+		}
+	}
+
+	// Validate specific fields if present
+	if infraType, ok := updateData["type"]; ok {
+		typeStr := strings.TrimSpace(infraType.(string))
+		if typeStr == "" {
+			return errors.New("infrastructure type cannot be empty")
+		}
+		if len(typeStr) < 2 || len(typeStr) > 100 {
+			return errors.New("infrastructure type must be between 2 and 100 characters")
+		}
+	}
+
+	if count, ok := updateData["count"]; ok {
+		countVal, _ := count.(float64)
+		if countVal < 0 {
+			return errors.New("count must be a non-negative number")
+		}
+	}
+
+	return nil
+}
+
 // ValidateBranchMemberUpdateFields validates branch member update
 func ValidateBranchMemberUpdateFields(updateData map[string]interface{}) error {
 	immutableFields := map[string]bool{

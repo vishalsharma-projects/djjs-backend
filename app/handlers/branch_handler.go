@@ -444,6 +444,12 @@ func UpdateBranchInfrastructureHandler(c *gin.Context) {
 		return
 	}
 
+	// Validate update fields
+	if err := validators.ValidateBranchInfrastructureUpdateFields(updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := services.UpdateBranchInfrastructure(uint(id), updateData); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
