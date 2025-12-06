@@ -48,8 +48,8 @@ type BranchCreateRequest struct {
 }
 
 type InfrastructureEntry struct {
-	RoomType string `json:"roomType"`
-	Number   string `json:"number"`
+	Type  string      `json:"type"`
+	Count interface{} `json:"count"`
 }
 
 type ChildBranchEntry struct {
@@ -216,25 +216,41 @@ func CreateBranchHandler(c *gin.Context) {
 		return
 	}
 
-	// Persist infrastructure entries from payload
+	// Persist infrastructure entries from payload (expects canonical 'type'/'count')
 	for _, infra := range req.Infrastructure {
-		if infra.RoomType == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.roomType is required"})
+		rt := infra.Type
+		if rt == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.type is required"})
 			return
 		}
+
+		// parse count which may be number or string
 		num := 0
-		if infra.Number != "" {
-			n, err := strconv.Atoi(infra.Number)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.number must be numeric"})
-				return
+		switch v := infra.Count.(type) {
+		case string:
+			if v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					num = n
+				} else {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be numeric"})
+					return
+				}
 			}
-			num = n
+		case float64:
+			num = int(v)
+		case int:
+			num = v
+		case nil:
+			num = 0
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be a number or numeric string"})
+			return
 		}
+
 		infraModel := models.BranchInfrastructure{
-			BranchID: branch.ID,
-			Type:     infra.RoomType,
-			Count:    num,
+			BranchID:  branch.ID,
+			Type:      rt,
+			Count:     num,
 			CreatedBy: branch.CreatedBy,
 		}
 		if err := services.CreateBranchInfrastructure(&infraModel); err != nil {
@@ -413,12 +429,15 @@ func UpdateBranchHandler(c *gin.Context) {
 		if arr, ok := infraRaw.([]interface{}); ok {
 			for _, item := range arr {
 				if m, ok := item.(map[string]interface{}); ok {
-					roomType := ""
-					number := 0
-					if v, ok := m["roomType"]; ok {
-						roomType = v.(string)
+					infraType := ""
+					if v, ok := m["type"]; ok {
+						if s, ok := v.(string); ok {
+							infraType = s
+						}
 					}
-					if v, ok := m["number"]; ok {
+
+					number := 0
+					if v, ok := m["count"]; ok {
 						switch n := v.(type) {
 						case string:
 							if n != "" {
@@ -430,9 +449,10 @@ func UpdateBranchHandler(c *gin.Context) {
 							number = int(n)
 						}
 					}
+
 					infraModel := models.BranchInfrastructure{
 						BranchID:  uint(branchID),
-						Type:      roomType,
+						Type:      infraType,
 						Count:     number,
 						CreatedBy: "",
 					}

@@ -191,39 +191,40 @@ func ValidateInfrastructureArray(val interface{}) error {
 		if !ok {
 			return errors.New("infrastructure entries must be objects")
 		}
-		// roomType
-		if rt, ok := m["roomType"]; ok {
-			if s, ok := rt.(string); ok {
-				s = strings.TrimSpace(s)
-				if s == "" {
-					return errors.New("infrastructure[" + strconv.Itoa(i) + "].roomType is required")
-				}
-				if len(s) < 2 || len(s) > 100 {
-					return errors.New("infrastructure.roomType must be between 2 and 100 characters")
-				}
-			} else {
-				return errors.New("infrastructure.roomType must be a string")
-			}
-		} else {
-			return errors.New("infrastructure.roomType is required")
+		var rtVal interface{}
+		if v, ok := m["type"]; ok {
+			rtVal = v
+		}
+		if rtVal == nil {
+			return errors.New("infrastructure[" + strconv.Itoa(i) + "].type is required")
+		}
+		s, ok := rtVal.(string)
+		if !ok {
+			return errors.New("infrastructure.type must be a string")
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return errors.New("infrastructure[" + strconv.Itoa(i) + "].type is required")
+		}
+		if len(s) < 2 || len(s) > 100 {
+			return errors.New("infrastructure.type must be between 2 and 100 characters")
 		}
 
-		// number
-		if num, ok := m["number"]; ok {
+		if num, ok := m["count"]; ok {
 			switch n := num.(type) {
 			case string:
 				if strings.TrimSpace(n) == "" {
 					continue
 				}
 				if _, err := strconv.Atoi(n); err != nil {
-					return errors.New("infrastructure.number must be numeric")
+					return errors.New("infrastructure.count must be numeric")
 				}
 			case float64:
 				if n < 0 {
-					return errors.New("infrastructure.number must be non-negative")
+					return errors.New("infrastructure.count must be non-negative")
 				}
 			default:
-				return errors.New("infrastructure.number must be a number or string")
+				return errors.New("infrastructure.count must be a number or string")
 			}
 		}
 	}
