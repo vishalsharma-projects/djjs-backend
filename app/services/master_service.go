@@ -130,3 +130,21 @@ func GetCoordinatorDropdownService() ([]models.BranchMember, error) {
 
 	return list, nil
 }
+
+// GetOratorDropdownService
+func GetOratorDropdownService() ([]models.BranchMember, error) {
+	var list []models.BranchMember
+
+	err := config.DB.
+		Model(&models.BranchMember{}).
+		Select("id, name").
+		Where("branch_role IN ?", []string{"Coordinator", "Preacher"}).
+		Order("name ASC").
+		Find(&list).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}

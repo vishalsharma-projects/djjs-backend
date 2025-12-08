@@ -1,5 +1,83 @@
 basePath: /
 definitions:
+  handlers.BranchCreateRequest:
+    properties:
+      aashram_area:
+        type: number
+      address:
+        type: string
+      branch_members:
+        items:
+          type: integer
+        type: array
+      child_branches:
+        items:
+          $ref: '#/definitions/handlers.ChildBranchEntry'
+        type: array
+      city:
+        description: Can be string or number
+      city_id:
+        type: integer
+      contact_number:
+        type: string
+      coordinator_name:
+        type: string
+      country:
+        description: Support both old format (strings) and new format (integers)
+      country_id:
+        type: integer
+      created_by:
+        type: string
+      daily_end_time:
+        type: string
+      daily_start_time:
+        type: string
+      district:
+        description: Can be string or number
+      district_id:
+        type: integer
+      email:
+        type: string
+      established_on:
+        type: string
+      infrastructure:
+        items:
+          $ref: '#/definitions/handlers.InfrastructureEntry'
+        type: array
+      name:
+        type: string
+      open_days:
+        type: string
+      parent_branch_id: {}
+      pincode:
+        type: string
+      police_station:
+        type: string
+      post_office:
+        type: string
+      state:
+        description: Can be string or number
+      state_id:
+        type: integer
+      updated_by:
+        type: string
+    required:
+    - contact_number
+    - name
+    type: object
+  handlers.ChildBranchEntry:
+    properties:
+      address:
+        type: string
+      branchId:
+        type: string
+    type: object
+  handlers.InfrastructureEntry:
+    properties:
+      count: {}
+      type:
+        type: string
+    type: object
   handlers.LoginRequest:
     properties:
       email:
@@ -47,9 +125,19 @@ definitions:
       address:
         maxLength: 500
         type: string
+      branch_members:
+        items:
+          $ref: '#/definitions/models.BranchMember'
+        type: array
+      children:
+        items:
+          $ref: '#/definitions/models.Branch'
+        type: array
       city:
-        maxLength: 100
-        type: string
+        $ref: '#/definitions/models.City'
+      city_id:
+        minimum: 1
+        type: integer
       contact_number:
         maxLength: 20
         type: string
@@ -58,8 +146,10 @@ definitions:
         minLength: 2
         type: string
       country:
-        maxLength: 100
-        type: string
+        $ref: '#/definitions/models.Country'
+      country_id:
+        minimum: 1
+        type: integer
       created_by:
         type: string
       created_on:
@@ -68,25 +158,11 @@ definitions:
         type: string
       daily_start_time:
         type: string
-      parent_branch_id:
-        type: integer
-      parent:
-        $ref: '#/definitions/models.Branch'
-      children:
-        items:
-          $ref: '#/definitions/models.Branch'
-        type: array
-      infrastructure:
-        items:
-          $ref: '#/definitions/models.BranchInfrastructure'
-        type: array
-      branch_members:
-        items:
-          $ref: '#/definitions/models.BranchMember'
-        type: array
       district:
-        maxLength: 100
-        type: string
+        $ref: '#/definitions/models.District'
+      district_id:
+        minimum: 1
+        type: integer
       email:
         maxLength: 255
         type: string
@@ -94,6 +170,10 @@ definitions:
         type: string
       id:
         type: integer
+      infrastructure:
+        items:
+          $ref: '#/definitions/models.BranchInfrastructure'
+        type: array
       name:
         maxLength: 255
         minLength: 2
@@ -101,6 +181,10 @@ definitions:
       open_days:
         maxLength: 100
         type: string
+      parent:
+        $ref: '#/definitions/models.Branch'
+      parent_branch_id:
+        type: integer
       pincode:
         type: string
       police_station:
@@ -110,8 +194,10 @@ definitions:
         maxLength: 100
         type: string
       state:
-        maxLength: 100
-        type: string
+        $ref: '#/definitions/models.State'
+      state_id:
+        minimum: 1
+        type: integer
       updated_by:
         type: string
       updated_on:
@@ -590,7 +676,7 @@ definitions:
     - event_id
     - volunteer_name
     type: object
-host: eventsreportingapi.djjs.org
+host: localhost:8080
 info:
   contact:
     email: vaish@gmail.com
@@ -710,11 +796,6 @@ paths:
         schema:
           additionalProperties: true
           type: object
-      description: |
-        Update a branch. Notes:
-          - `child_branches` in the payload is treated as additive/patch-like: provided child IDs will be linked to this parent by setting their `parent_branch_id`, but existing child branches omitted from the list will NOT be unlinked automatically.
-          - To unlink a previously-linked child, update that child directly or provide an explicit unlink operation.
-          - If `infrastructure` is provided, existing infrastructure entries for the branch will be replaced by the provided list.
       produces:
       - application/json
       responses:
@@ -1139,7 +1220,7 @@ paths:
         name: branch
         required: true
         schema:
-          $ref: '#/definitions/models.Branch'
+          $ref: '#/definitions/handlers.BranchCreateRequest'
       produces:
       - application/json
       responses:
@@ -1166,37 +1247,6 @@ paths:
       tags:
       - Branches
   /api/branches/{id}:
-    get:
-      parameters:
-      - description: Branch ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Branch'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Get a branch by ID
-      tags:
-      - Branches
     delete:
       parameters:
       - description: Branch ID
@@ -1230,6 +1280,38 @@ paths:
       summary: Delete a branch
       tags:
       - Branches
+    get:
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get a branch by ID
+      tags:
+      - Branches
     put:
       consumes:
       - application/json
@@ -1244,14 +1326,17 @@ paths:
         name: branch
         required: true
         schema:
-          $ref: '#/definitions/models.Branch'
+          additionalProperties: true
+          type: object
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Branch'
+            additionalProperties:
+              type: string
+            type: object
         "400":
           description: Bad Request
           schema:
@@ -2095,6 +2180,30 @@ paths:
       summary: Search events
       tags:
       - Events
+  /api/orators:
+    get:
+      description: Returns a list of orators (Coordinators & Preachers) with id and
+        name from branch_member table
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.BranchMember'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Orator Dropdown
+      tags:
+      - Orator
   /api/promotion-material-details:
     get:
       description: Retrieve all PromotionMaterialDetails records

@@ -869,7 +869,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Branch"
+                            "$ref": "#/definitions/handlers.BranchCreateRequest"
                         }
                     }
                 ],
@@ -980,7 +980,8 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Branch"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -2373,6 +2374,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/orators": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a list of orators (Coordinators \u0026 Preachers) with id and name from branch_member table",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orator"
+                ],
+                "summary": "Get Orator Dropdown",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BranchMember"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/promotion-material-details": {
             "get": {
                 "security": [
@@ -3628,6 +3666,123 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.BranchCreateRequest": {
+            "type": "object",
+            "required": [
+                "contact_number",
+                "name"
+            ],
+            "properties": {
+                "aashram_area": {
+                    "type": "number"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "branch_members": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "child_branches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.ChildBranchEntry"
+                    }
+                },
+                "city": {
+                    "description": "Can be string or number"
+                },
+                "city_id": {
+                    "type": "integer"
+                },
+                "contact_number": {
+                    "type": "string"
+                },
+                "coordinator_name": {
+                    "type": "string"
+                },
+                "country": {
+                    "description": "Support both old format (strings) and new format (integers)"
+                },
+                "country_id": {
+                    "type": "integer"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "daily_end_time": {
+                    "type": "string"
+                },
+                "daily_start_time": {
+                    "type": "string"
+                },
+                "district": {
+                    "description": "Can be string or number"
+                },
+                "district_id": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "established_on": {
+                    "type": "string"
+                },
+                "infrastructure": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.InfrastructureEntry"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "open_days": {
+                    "type": "string"
+                },
+                "parent_branch_id": {},
+                "pincode": {
+                    "type": "string"
+                },
+                "police_station": {
+                    "type": "string"
+                },
+                "post_office": {
+                    "type": "string"
+                },
+                "state": {
+                    "description": "Can be string or number"
+                },
+                "state_id": {
+                    "type": "integer"
+                },
+                "updated_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ChildBranchEntry": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "branchId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.InfrastructureEntry": {
+            "type": "object",
+            "properties": {
+                "count": {},
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.LoginRequest": {
             "type": "object",
             "required": [
@@ -3698,9 +3853,24 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 500
                 },
+                "branch_members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BranchMember"
+                    }
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Branch"
+                    }
+                },
                 "city": {
-                    "type": "string",
-                    "maxLength": 100
+                    "$ref": "#/definitions/models.City"
+                },
+                "city_id": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "contact_number": {
                     "type": "string",
@@ -3712,8 +3882,11 @@ const docTemplate = `{
                     "minLength": 2
                 },
                 "country": {
-                    "type": "string",
-                    "maxLength": 100
+                    "$ref": "#/definitions/models.Country"
+                },
+                "country_id": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "created_by": {
                     "type": "string"
@@ -3728,8 +3901,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "district": {
-                    "type": "string",
-                    "maxLength": 100
+                    "$ref": "#/definitions/models.District"
+                },
+                "district_id": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "email": {
                     "type": "string",
@@ -3741,6 +3917,12 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "infrastructure": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BranchInfrastructure"
+                    }
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
@@ -3749,6 +3931,12 @@ const docTemplate = `{
                 "open_days": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "parent": {
+                    "$ref": "#/definitions/models.Branch"
+                },
+                "parent_branch_id": {
+                    "type": "integer"
                 },
                 "pincode": {
                     "type": "string"
@@ -3762,8 +3950,11 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "state": {
-                    "type": "string",
-                    "maxLength": 100
+                    "$ref": "#/definitions/models.State"
+                },
+                "state_id": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "updated_by": {
                     "type": "string"
@@ -4484,7 +4675,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "eventsreportingapi.djjs.org",
+	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "DJJS Event Reporting API",

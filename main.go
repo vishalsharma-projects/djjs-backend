@@ -179,6 +179,7 @@ func main() {
 		api.GET("/districts/all", middleware.AuthMiddleware(), handlers.GetAllDistrictsHandler)                   // all districts
 		api.GET("/promotion-material-types", middleware.AuthMiddleware(), handlers.GetAllPromotionMaterialTypesHandler)
 		api.GET("/coordinators", middleware.AuthMiddleware(), handlers.GetCoordinatorDropdownHandler)
+		api.GET("/orators", middleware.AuthMiddleware(), handlers.GetOratorDropdownHandler)
 
 	}
 
