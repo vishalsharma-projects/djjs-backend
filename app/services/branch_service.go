@@ -104,13 +104,17 @@ func GetBranch(branchID uint) (*models.Branch, error) {
 	var branch models.Branch
 	if err := config.DB.
 		Select("id", "name", "email", "coordinator_name", "contact_number", "established_on", "aashram_area",
-			"country_id", "state_id", "district_id", "city_id",
+			"country_id", "state_id", "district_id", "city_id", "parent_branch_id",
 			"address", "pincode", "post_office", "police_station", "open_days",
 			"daily_start_time", "daily_end_time", "created_on", "updated_on", "created_by", "updated_by").
 		Preload("Country").
 		Preload("State").
 		Preload("District").
 		Preload("City").
+		Preload("Parent").
+		Preload("Children").
+		Preload("Infrastructures").
+		Preload("Members").
 		First(&branch, branchID).Error; err != nil {
 		return nil, errors.New("branch not found")
 	}

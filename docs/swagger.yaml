@@ -6,6 +6,17 @@ definitions:
         type: number
       address:
         type: string
+<<<<<<< HEAD
+=======
+      branch_members:
+        items:
+          type: integer
+        type: array
+      child_branches:
+        items:
+          $ref: '#/definitions/handlers.ChildBranchEntry'
+        type: array
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       city:
         description: Can be string or number
       city_id:
@@ -32,10 +43,21 @@ definitions:
         type: string
       established_on:
         type: string
+<<<<<<< HEAD
+=======
+      infrastructure:
+        items:
+          $ref: '#/definitions/handlers.InfrastructureEntry'
+        type: array
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       name:
         type: string
       open_days:
         type: string
+<<<<<<< HEAD
+=======
+      parent_branch_id: {}
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       pincode:
         type: string
       police_station:
@@ -52,6 +74,22 @@ definitions:
     - contact_number
     - name
     type: object
+<<<<<<< HEAD
+=======
+  handlers.ChildBranchEntry:
+    properties:
+      address:
+        type: string
+      branchId:
+        type: string
+    type: object
+  handlers.InfrastructureEntry:
+    properties:
+      count: {}
+      type:
+        type: string
+    type: object
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
   handlers.LoginRequest:
     properties:
       email:
@@ -99,6 +137,14 @@ definitions:
       address:
         maxLength: 500
         type: string
+      branch_members:
+        items:
+          $ref: '#/definitions/models.BranchMember'
+        type: array
+      children:
+        items:
+          $ref: '#/definitions/models.Branch'
+        type: array
       city:
         $ref: '#/definitions/models.City'
       city_id:
@@ -136,6 +182,10 @@ definitions:
         type: string
       id:
         type: integer
+      infrastructure:
+        items:
+          $ref: '#/definitions/models.BranchInfrastructure'
+        type: array
       name:
         maxLength: 255
         minLength: 2
@@ -143,6 +193,10 @@ definitions:
       open_days:
         maxLength: 100
         type: string
+      parent:
+        $ref: '#/definitions/models.Branch'
+      parent_branch_id:
+        type: integer
       pincode:
         type: string
       police_station:
@@ -1258,7 +1312,12 @@ paths:
         "200":
           description: OK
           schema:
+<<<<<<< HEAD
             $ref: '#/definitions/models.Branch'
+=======
+            additionalProperties: true
+            type: object
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "400":
           description: Bad Request
           schema:
@@ -2400,6 +2459,30 @@ paths:
       summary: Search events
       tags:
       - Events
+  /api/orators:
+    get:
+      description: Returns a list of orators (Coordinators & Preachers) with id and
+        name from branch_member table
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.BranchMember'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Orator Dropdown
+      tags:
+      - Orator
   /api/promotion-material-details:
     get:
       description: Retrieve all PromotionMaterialDetails records

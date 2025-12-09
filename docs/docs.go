@@ -980,7 +980,8 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Branch"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -2741,6 +2742,165 @@ const docTemplate = `{
                 }
             }
         },
+<<<<<<< HEAD
+=======
+        "/api/events/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Update an event",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated fields",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Delete an event",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orators": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a list of orators (Coordinators \u0026 Preachers) with id and name from branch_member table",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orator"
+                ],
+                "summary": "Get Orator Dropdown",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BranchMember"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "/api/promotion-material-details": {
             "get": {
                 "security": [
@@ -4009,6 +4169,21 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+<<<<<<< HEAD
+=======
+                "branch_members": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "child_branches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.ChildBranchEntry"
+                    }
+                },
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "city": {
                     "description": "Can be string or number"
                 },
@@ -4048,12 +4223,25 @@ const docTemplate = `{
                 "established_on": {
                     "type": "string"
                 },
+<<<<<<< HEAD
+=======
+                "infrastructure": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.InfrastructureEntry"
+                    }
+                },
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "name": {
                     "type": "string"
                 },
                 "open_days": {
                     "type": "string"
                 },
+<<<<<<< HEAD
+=======
+                "parent_branch_id": {},
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "pincode": {
                     "type": "string"
                 },
@@ -4074,6 +4262,29 @@ const docTemplate = `{
                 }
             }
         },
+<<<<<<< HEAD
+=======
+        "handlers.ChildBranchEntry": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "branchId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.InfrastructureEntry": {
+            "type": "object",
+            "properties": {
+                "count": {},
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+>>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "handlers.LoginRequest": {
             "type": "object",
             "required": [
@@ -4144,6 +4355,18 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 500
                 },
+                "branch_members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BranchMember"
+                    }
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Branch"
+                    }
+                },
                 "city": {
                     "$ref": "#/definitions/models.City"
                 },
@@ -4196,6 +4419,12 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "infrastructure": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BranchInfrastructure"
+                    }
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
@@ -4204,6 +4433,12 @@ const docTemplate = `{
                 "open_days": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "parent": {
+                    "$ref": "#/definitions/models.Branch"
+                },
+                "parent_branch_id": {
+                    "type": "integer"
                 },
                 "pincode": {
                     "type": "string"

@@ -25,11 +25,19 @@ CREATE TABLE branches (
     open_days VARCHAR(100),         -- e.g., 'Mon-Sun' or 'Mon-Fri'
     daily_start_time TIME,
     daily_end_time TIME,
+    parent_branch_id BIGINT NULL,
     created_on TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_on TIMESTAMPTZ,
     created_by VARCHAR(30),
     updated_by VARCHAR(30)
 );
+
+ALTER TABLE branches
+    ADD CONSTRAINT fk_branches_parent
+    FOREIGN KEY (parent_branch_id) REFERENCES branches(id)
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_branches_parent ON branches(parent_branch_id);
 
 CREATE TABLE areas (
     id BIGSERIAL PRIMARY KEY,

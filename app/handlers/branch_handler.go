@@ -40,6 +40,21 @@ type BranchCreateRequest struct {
 	DailyEndTime   string `json:"daily_end_time,omitempty"`
 	CreatedBy      string `json:"created_by,omitempty"`
 	UpdatedBy      string `json:"updated_by,omitempty"`
+	ParentBranch   interface{} `json:"parent_branch_id,omitempty"`
+
+	Infrastructure []InfrastructureEntry `json:"infrastructure,omitempty"`
+	ChildBranches  []ChildBranchEntry    `json:"child_branches,omitempty"`
+	BranchMembers  []uint                `json:"branch_members,omitempty"`
+}
+
+type InfrastructureEntry struct {
+	Type  string      `json:"type"`
+	Count interface{} `json:"count"`
+}
+
+type ChildBranchEntry struct {
+	BranchID string `json:"branchId,omitempty"`
+	Address  string `json:"address,omitempty"`
 }
 
 // ToBranch converts the request to a Branch model
@@ -114,6 +129,14 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 		if err == nil && cityID > 0 {
 			id := uint(cityID)
 			branch.CityID = &id
+		}
+	}
+
+	// Handle parent branch id if provided
+	if r.ParentBranch != nil {
+		if pb, err := parseID(r.ParentBranch); err == nil && pb > 0 {
+			id := uint(pb)
+			branch.ParentBranchID = &id
 		}
 	}
 
@@ -193,6 +216,79 @@ func CreateBranchHandler(c *gin.Context) {
 		return
 	}
 
+	// Persist infrastructure entries from payload (expects canonical 'type'/'count')
+	for _, infra := range req.Infrastructure {
+		rt := infra.Type
+		if rt == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.type is required"})
+			return
+		}
+
+		// parse count which may be number or string
+		num := 0
+		switch v := infra.Count.(type) {
+		case string:
+			if v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					num = n
+				} else {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be numeric"})
+					return
+				}
+			}
+		case float64:
+			num = int(v)
+		case int:
+			num = v
+		case nil:
+			num = 0
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be a number or numeric string"})
+			return
+		}
+
+		infraModel := models.BranchInfrastructure{
+			BranchID:  branch.ID,
+			Type:      rt,
+			Count:     num,
+			CreatedBy: branch.CreatedBy,
+		}
+		if err := services.CreateBranchInfrastructure(&infraModel); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Link child branches by id (child_branches[].branchId)
+	for _, child := range req.ChildBranches {
+		if child.BranchID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "child_branches entries must include branchId to link existing branches"})
+			return
+		}
+		cid, err := strconv.ParseUint(child.BranchID, 10, 64)
+		if err != nil || cid == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid child branchId"})
+			return
+		}
+		// Update child branch to set parent_branch_id to created branch
+		updateData := map[string]interface{}{"parent_branch_id": branch.ID}
+		if err := services.UpdateBranch(uint(cid), updateData); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Link existing branch members by IDs (branch_members)
+	for _, memberID := range req.BranchMembers {
+		if memberID == 0 {
+			continue
+		}
+		if err := services.UpdateBranchMember(memberID, map[string]interface{}{"branch_id": branch.ID}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Branch created successfully",
 		"branch":  branch,
@@ -222,25 +318,32 @@ func GetAllBranchesHandler(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "Branch ID"
-// @Success 200 {object} models.Branch
+// @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /api/branches/{id} [get]
 func GetBranchHandler(c *gin.Context) {
 	idParam := c.Param("id")
+
 	branchID, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid branch ID"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid branch ID",
+		})
 		return
 	}
 
 	branch, err := services.GetBranch(uint(branchID))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, branch)
+	c.JSON(http.StatusOK, gin.H{
+		"branch": branch,
+	})
 }
 
 // GetBranchSearchHandler godoc
@@ -287,24 +390,131 @@ func UpdateBranchHandler(c *gin.Context) {
 		return
 	}
 
-	var updateData map[string]interface{}
-	if err := c.ShouldBindJSON(&updateData); err != nil {
+	// Bind into a generic map so we can accept nested keys (infrastructure, child_branches, branch_members)
+	var payload map[string]interface{}
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Validate update fields
-	if err := validators.ValidateBranchUpdateFields(updateData); err != nil {
+	// Extract nested collections and remove them from update map before updating branch table
+	infraRaw, hasInfra := payload["infrastructure"]
+	if hasInfra {
+		delete(payload, "infrastructure")
+	}
+	childRaw, hasChildren := payload["child_branches"]
+	if hasChildren {
+		delete(payload, "child_branches")
+	}
+	membersRaw, hasMembers := payload["branch_members"]
+	if hasMembers {
+		delete(payload, "branch_members")
+	}
+
+	// Validate remaining branch update fields
+	if err := validators.ValidateBranchUpdateFields(payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := services.UpdateBranch(uint(branchID), updateData); err != nil {
+	// Update branch table
+	if err := services.UpdateBranch(uint(branchID), payload); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Branch updated successfully"})
+	// Process infrastructure: replace existing infra with provided list (if provided)
+	if hasInfra {
+		// Delete existing infra for branch
+		if existing, err := services.GetInfrastructureByBranch(uint(branchID)); err == nil {
+			for _, e := range existing {
+				_ = services.DeleteBranchInfrastructure(e.ID)
+			}
+		}
+
+		// Create new infra entries
+		if arr, ok := infraRaw.([]interface{}); ok {
+			for _, item := range arr {
+				if m, ok := item.(map[string]interface{}); ok {
+					infraType := ""
+					if v, ok := m["type"]; ok {
+						if s, ok := v.(string); ok {
+							infraType = s
+						}
+					}
+
+					number := 0
+					if v, ok := m["count"]; ok {
+						switch n := v.(type) {
+						case string:
+							if n != "" {
+								if val, err := strconv.Atoi(n); err == nil {
+									number = val
+								}
+							}
+						case float64:
+							number = int(n)
+						}
+					}
+
+					infraModel := models.BranchInfrastructure{
+						BranchID:  uint(branchID),
+						Type:      infraType,
+						Count:     number,
+						CreatedBy: "",
+					}
+					_ = services.CreateBranchInfrastructure(&infraModel)
+				}
+			}
+		}
+	}
+
+	// Process child branches: link provided branch IDs to this branch
+	if hasChildren {
+		if arr, ok := childRaw.([]interface{}); ok {
+			for _, item := range arr {
+				if m, ok := item.(map[string]interface{}); ok {
+					if v, ok := m["branchId"]; ok {
+						var cid uint64
+						switch x := v.(type) {
+						case string:
+							cid, _ = strconv.ParseUint(x, 10, 64)
+						case float64:
+							cid = uint64(x)
+						}
+						if cid > 0 {
+							_ = services.UpdateBranch(uint(cid), map[string]interface{}{"parent_branch_id": uint(branchID)})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Process branch members: link existing member IDs to this branch
+	if hasMembers {
+		if arr, ok := membersRaw.([]interface{}); ok {
+			for _, item := range arr {
+				switch v := item.(type) {
+				case float64:
+					mid := uint(v)
+					_ = services.UpdateBranchMember(mid, map[string]interface{}{"branch_id": uint(branchID)})
+				case int:
+					mid := uint(v)
+					_ = services.UpdateBranchMember(mid, map[string]interface{}{"branch_id": uint(branchID)})
+				}
+			}
+		}
+	}
+
+	// Return the updated branch object (with relations preloaded)
+	branch, err := services.GetBranch(uint(branchID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, branch)
 }
 
 // DeleteBranchHandler godoc

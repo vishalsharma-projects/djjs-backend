@@ -3,6 +3,7 @@ package validators
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -116,6 +117,180 @@ func ValidateBranchUpdateFields(updateData map[string]interface{}) error {
 		}
 	}
 
+	// Validate parent_branch_id if present
+	if pb, ok := updateData["parent_branch_id"]; ok {
+		if err := ValidateParentBranchID(pb); err != nil {
+			return err
+		}
+	}
+
+	// Validate nested collections if present
+	if infra, ok := updateData["infrastructure"]; ok {
+		if err := ValidateInfrastructureArray(infra); err != nil {
+			return err
+		}
+	}
+
+	if childs, ok := updateData["child_branches"]; ok {
+		if err := ValidateChildBranchesArray(childs); err != nil {
+			return err
+		}
+	}
+
+	if members, ok := updateData["branch_members"]; ok {
+		if err := ValidateBranchMembersArray(members); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ValidateParentBranchID validates parent branch id value (string/number allowed)
+func ValidateParentBranchID(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case float64:
+		if v <= 0 {
+			return errors.New("parent_branch_id must be a positive integer")
+		}
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil
+		}
+		if _, err := strconv.ParseUint(v, 10, 64); err != nil {
+			return errors.New("parent_branch_id must be a valid integer")
+		}
+	case int:
+		if v <= 0 {
+			return errors.New("parent_branch_id must be a positive integer")
+		}
+	case uint:
+		if v == 0 {
+			return errors.New("parent_branch_id must be a positive integer")
+		}
+	default:
+		return errors.New("invalid parent_branch_id type")
+	}
+	return nil
+}
+
+// ValidateInfrastructureArray validates the infrastructure array payload
+func ValidateInfrastructureArray(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+	arr, ok := val.([]interface{})
+	if !ok {
+		return errors.New("infrastructure must be an array")
+	}
+	for i, item := range arr {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			return errors.New("infrastructure entries must be objects")
+		}
+		var rtVal interface{}
+		if v, ok := m["type"]; ok {
+			rtVal = v
+		}
+		if rtVal == nil {
+			return errors.New("infrastructure[" + strconv.Itoa(i) + "].type is required")
+		}
+		s, ok := rtVal.(string)
+		if !ok {
+			return errors.New("infrastructure.type must be a string")
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return errors.New("infrastructure[" + strconv.Itoa(i) + "].type is required")
+		}
+		if len(s) < 2 || len(s) > 100 {
+			return errors.New("infrastructure.type must be between 2 and 100 characters")
+		}
+
+		if num, ok := m["count"]; ok {
+			switch n := num.(type) {
+			case string:
+				if strings.TrimSpace(n) == "" {
+					continue
+				}
+				if _, err := strconv.Atoi(n); err != nil {
+					return errors.New("infrastructure.count must be numeric")
+				}
+			case float64:
+				if n < 0 {
+					return errors.New("infrastructure.count must be non-negative")
+				}
+			default:
+				return errors.New("infrastructure.count must be a number or string")
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateChildBranchesArray validates child_branches array (expects branchId for linking)
+func ValidateChildBranchesArray(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+	arr, ok := val.([]interface{})
+	if !ok {
+		return errors.New("child_branches must be an array")
+	}
+	for i, item := range arr {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			return errors.New("child_branches entries must be objects")
+		}
+		if bid, ok := m["branchId"]; ok {
+			switch b := bid.(type) {
+			case string:
+				if strings.TrimSpace(b) == "" {
+					return errors.New("child_branches[" + strconv.Itoa(i) + "].branchId cannot be empty")
+				}
+				if _, err := strconv.ParseUint(b, 10, 64); err != nil {
+					return errors.New("child_branches.branchId must be a valid integer")
+				}
+			case float64:
+				if b <= 0 {
+					return errors.New("child_branches.branchId must be a positive integer")
+				}
+			default:
+				return errors.New("child_branches.branchId must be an integer or string")
+			}
+		} else {
+			return errors.New("child_branches.branchId is required for linking existing branches")
+		}
+	}
+	return nil
+}
+
+// ValidateBranchMembersArray validates branch_members array (expects integer IDs)
+func ValidateBranchMembersArray(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+	arr, ok := val.([]interface{})
+	if !ok {
+		return errors.New("branch_members must be an array of ids")
+	}
+	for i, item := range arr {
+		switch v := item.(type) {
+		case float64:
+			if v <= 0 {
+				return errors.New("branch_members[" + strconv.Itoa(i) + "] must be a positive integer")
+			}
+		case int:
+			if v <= 0 {
+				return errors.New("branch_members[" + strconv.Itoa(i) + "] must be a positive integer")
+			}
+		default:
+			return errors.New("branch_members must contain integer IDs")
+		}
+	}
 	return nil
 }
 

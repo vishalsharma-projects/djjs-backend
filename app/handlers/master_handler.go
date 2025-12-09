@@ -262,3 +262,23 @@ func GetCoordinatorDropdownHandler(c *gin.Context) {
 
 	c.JSON(200, list)
 }
+
+// GetOratorDropdownHandler godoc
+// @Summary Get Orator Dropdown
+// @Description Returns a list of orators (Coordinators & Preachers) with id and name from branch_member table
+// @Tags Orator
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} models.BranchMember
+// @Failure 500 {object} map[string]string
+// @Router /api/orators [get]
+func GetOratorDropdownHandler(c *gin.Context) {
+
+	list, err := services.GetOratorDropdownService()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, list)
+}

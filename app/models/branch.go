@@ -26,6 +26,11 @@ type Branch struct {
 	OpenDays        string     `json:"open_days,omitempty" validate:"omitempty,max=100"`
 	DailyStartTime  string     `json:"daily_start_time,omitempty" validate:"omitempty"`
 	DailyEndTime    string     `json:"daily_end_time,omitempty" validate:"omitempty"`
+	ParentBranchID  *uint      `gorm:"column:parent_branch_id" json:"parent_branch_id,omitempty"`
+	Parent          *Branch    `gorm:"foreignKey:ParentBranchID" json:"parent,omitempty"`
+	Children        []Branch   `gorm:"foreignKey:ParentBranchID" json:"children,omitempty"`
+	Infrastructures []BranchInfrastructure `gorm:"foreignKey:BranchID" json:"infrastructure,omitempty"`
+	Members         []BranchMember         `gorm:"foreignKey:BranchID" json:"branch_members,omitempty"`
 	CreatedOn       time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
 	UpdatedOn       *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
 	CreatedBy       string     `json:"created_by,omitempty"`
