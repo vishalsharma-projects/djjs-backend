@@ -1,3 +1,16 @@
+swagger: "2.0"
+info:
+  description: API documentation for the DJJS Event Reporting Backend.
+  title: DJJS Event Reporting API
+  termsOfService: http://swagger.io/terms/
+  contact:
+    name: API Support
+    email: vaish@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  version: "1.0"
+host: localhost:8080
 basePath: /
 definitions:
   handlers.BranchCreateRequest:
@@ -6,8 +19,6 @@ definitions:
         type: number
       address:
         type: string
-<<<<<<< HEAD
-=======
       branch_members:
         items:
           type: integer
@@ -16,7 +27,6 @@ definitions:
         items:
           $ref: '#/definitions/handlers.ChildBranchEntry'
         type: array
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       city:
         description: Can be string or number
       city_id:
@@ -43,21 +53,15 @@ definitions:
         type: string
       established_on:
         type: string
-<<<<<<< HEAD
-=======
       infrastructure:
         items:
           $ref: '#/definitions/handlers.InfrastructureEntry'
         type: array
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       name:
         type: string
       open_days:
         type: string
-<<<<<<< HEAD
-=======
       parent_branch_id: {}
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
       pincode:
         type: string
       police_station:
@@ -74,8 +78,6 @@ definitions:
     - contact_number
     - name
     type: object
-<<<<<<< HEAD
-=======
   handlers.ChildBranchEntry:
     properties:
       address:
@@ -89,7 +91,6 @@ definitions:
       type:
         type: string
     type: object
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
   handlers.LoginRequest:
     properties:
       email:
@@ -695,18 +696,6 @@ definitions:
     - event_id
     - volunteer_name
     type: object
-host: localhost:8080
-info:
-  contact:
-    email: vaish@gmail.com
-    name: API Support
-  description: API documentation for the DJJS Event Reporting Backend.
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
-  title: DJJS Event Reporting API
-  version: "1.0"
 paths:
   /api/areas:
     get:
@@ -1312,12 +1301,8 @@ paths:
         "200":
           description: OK
           schema:
-<<<<<<< HEAD
-            $ref: '#/definitions/models.Branch'
-=======
             additionalProperties: true
             type: object
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "400":
           description: Bad Request
           schema:
@@ -1907,12 +1892,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       security:
       - ApiKeyAuth: []
       summary: Get Event Media by Event ID
@@ -2045,7 +2024,8 @@ paths:
       tags:
       - Events
     get:
-      description: Get a single event by its ID
+      description: Get a single event by its ID with related data (special guests,
+        volunteers, media)
       parameters:
       - description: Event ID
         in: path
@@ -2056,9 +2036,10 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Event with related data
           schema:
-            $ref: '#/definitions/models.EventDetails'
+            additionalProperties: true
+            type: object
         "400":
           description: Bad Request
           schema:
@@ -3288,4 +3269,3 @@ securityDefinitions:
     in: header
     name: Authorization
     type: apiKey
-swagger: "2.0"

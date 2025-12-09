@@ -1785,15 +1785,6 @@
                                 "type": "string"
                             }
                         }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
@@ -2270,7 +2261,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get a single event by its ID",
+                "description": "Get a single event by its ID with related data (special guests, volunteers, media)",
                 "produces": [
                     "application/json"
                 ],
@@ -2289,9 +2280,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Event with related data",
                         "schema": {
-                            "$ref": "#/definitions/models.EventDetails"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -2736,127 +2728,6 @@
                 }
             }
         },
-<<<<<<< HEAD
-=======
-        "/api/events/{id}": {
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Events"
-                ],
-                "summary": "Update an event",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Event ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated fields",
-                        "name": "event",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Events"
-                ],
-                "summary": "Delete an event",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Event ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/orators": {
             "get": {
                 "security": [
@@ -2894,7 +2765,6 @@
                 }
             }
         },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "/api/promotion-material-details": {
             "get": {
                 "security": [
@@ -4163,8 +4033,6 @@
                 "address": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-=======
                 "branch_members": {
                     "type": "array",
                     "items": {
@@ -4177,7 +4045,6 @@
                         "$ref": "#/definitions/handlers.ChildBranchEntry"
                     }
                 },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "city": {
                     "description": "Can be string or number"
                 },
@@ -4217,25 +4084,19 @@
                 "established_on": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-=======
                 "infrastructure": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/handlers.InfrastructureEntry"
                     }
                 },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "name": {
                     "type": "string"
                 },
                 "open_days": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-=======
                 "parent_branch_id": {},
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "pincode": {
                     "type": "string"
                 },
@@ -4256,8 +4117,6 @@
                 }
             }
         },
-<<<<<<< HEAD
-=======
         "handlers.ChildBranchEntry": {
             "type": "object",
             "properties": {
@@ -4278,7 +4137,6 @@
                 }
             }
         },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
         "handlers.LoginRequest": {
             "type": "object",
             "required": [

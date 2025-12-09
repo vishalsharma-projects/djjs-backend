@@ -1791,15 +1791,6 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
@@ -2276,7 +2267,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get a single event by its ID",
+                "description": "Get a single event by its ID with related data (special guests, volunteers, media)",
                 "produces": [
                     "application/json"
                 ],
@@ -2295,9 +2286,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Event with related data",
                         "schema": {
-                            "$ref": "#/definitions/models.EventDetails"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -2732,6 +2724,43 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orators": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a list of orators (Coordinators \u0026 Preachers) with id and name from branch_member table",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orator"
+                ],
+                "summary": "Get Orator Dropdown",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BranchMember"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4010,8 +4039,6 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-=======
                 "branch_members": {
                     "type": "array",
                     "items": {
@@ -4024,7 +4051,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/handlers.ChildBranchEntry"
                     }
                 },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "city": {
                     "description": "Can be string or number"
                 },
@@ -4064,21 +4090,19 @@ const docTemplate = `{
                 "established_on": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-=======
                 "infrastructure": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/handlers.InfrastructureEntry"
                     }
                 },
->>>>>>> a99fde8d44c70ef121de2cef0b92e47e7049a74e
                 "name": {
                     "type": "string"
                 },
                 "open_days": {
                     "type": "string"
                 },
+                "parent_branch_id": {},
                 "pincode": {
                     "type": "string"
                 },
@@ -4095,6 +4119,26 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updated_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ChildBranchEntry": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "branchId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.InfrastructureEntry": {
+            "type": "object",
+            "properties": {
+                "count": {},
+                "type": {
                     "type": "string"
                 }
             }
