@@ -8,7 +8,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy rest of the project (including .env, config/, app/, main.go, etc.)
+# Copy rest of the project (config/, app/, main.go, etc.)
+# Note: .env is excluded via .dockerignore or .gitignore
 COPY . .
 
 # Build static binary
