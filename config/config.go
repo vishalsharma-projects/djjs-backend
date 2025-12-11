@@ -31,8 +31,24 @@ func ConnectDB() {
     dbPort := os.Getenv("PG_PORT")
     dbHost := os.Getenv("POSTGRES_HOST")
 
-	log.Printf("Connecting to DB -> host=%s port=%s user=%s dbname=%s", dbHost, dbPort, dbUser, dbName)
+    // Validate required environment variables
+    if dbHost == "" {
+        log.Fatal("POSTGRES_HOST is required in .env or environment variables")
+    }
+    if dbUser == "" {
+        log.Fatal("POSTGRES_USER is required in .env or environment variables")
+    }
+    if dbPass == "" {
+        log.Fatal("POSTGRES_PASSWORD is required in .env or environment variables")
+    }
+    if dbName == "" {
+        log.Fatal("POSTGRES_DB is required in .env or environment variables")
+    }
+    if dbPort == "" {
+        dbPort = "5432" // Default PostgreSQL port
+    }
 
+	log.Printf("Connecting to DB -> host=%s port=%s user=%s dbname=%s", dbHost, dbPort, dbUser, dbName)
 
     dsn := fmt.Sprintf(
         "host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
