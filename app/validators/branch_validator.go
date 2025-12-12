@@ -117,6 +117,53 @@ func ValidateBranchUpdateFields(updateData map[string]interface{}) error {
 		}
 	}
 
+	// Validate status if present
+	if status, ok := updateData["status"]; ok {
+		if _, ok := status.(bool); !ok {
+			return errors.New("status must be a boolean")
+		}
+	}
+
+	// Validate ncr if present
+	if ncr, ok := updateData["ncr"]; ok {
+		if _, ok := ncr.(bool); !ok {
+			return errors.New("ncr must be a boolean")
+		}
+	}
+
+	// Validate region_id if present
+	if regionID, ok := updateData["region_id"]; ok {
+		if regionID != nil {
+			var regionIDVal uint
+			switch v := regionID.(type) {
+			case float64:
+				regionIDVal = uint(v)
+			case uint:
+				regionIDVal = v
+			case int:
+				regionIDVal = uint(v)
+			default:
+				return errors.New("invalid region_id type")
+			}
+			if regionIDVal == 0 {
+				return errors.New("region_id must be a positive integer")
+			}
+		}
+	}
+
+	// Validate branch_code if present
+	if branchCode, ok := updateData["branch_code"]; ok {
+		if branchCodeStr, ok := branchCode.(string); ok {
+			if branchCodeStr != "" {
+				if len(branchCodeStr) > 50 {
+					return errors.New("branch_code must not exceed 50 characters")
+				}
+			}
+		} else if branchCode != nil {
+			return errors.New("branch_code must be a string")
+		}
+	}
+
 	// Validate parent_branch_id if present
 	if pb, ok := updateData["parent_branch_id"]; ok {
 		if err := ValidateParentBranchID(pb); err != nil {

@@ -31,6 +31,10 @@ type Branch struct {
 	Children        []Branch   `gorm:"foreignKey:ParentBranchID" json:"children,omitempty"`
 	Infrastructures []BranchInfrastructure `gorm:"foreignKey:BranchID" json:"infrastructure,omitempty"`
 	Members         []BranchMember         `gorm:"foreignKey:BranchID" json:"branch_members,omitempty"`
+	Status          bool       `gorm:"default:true" json:"status"`
+	NCR             bool       `gorm:"column:ncr;default:false" json:"ncr"`
+	RegionID        *uint      `gorm:"column:region_id" json:"region_id,omitempty"`
+	BranchCode      string     `gorm:"column:branch_code;unique" json:"branch_code,omitempty" validate:"omitempty,max=50"`
 	CreatedOn       time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
 	UpdatedOn       *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
 	CreatedBy       string     `json:"created_by,omitempty"`

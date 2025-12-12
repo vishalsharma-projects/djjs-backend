@@ -24,6 +24,14 @@ func CreateBranch(branch *models.Branch) error {
 		return errors.New("contact number already exists")
 	}
 
+	// Check branch_code uniqueness if provided
+	if branch.BranchCode != "" {
+		var existingBranch models.Branch
+		if err := config.DB.Where("branch_code = ?", branch.BranchCode).First(&existingBranch).Error; err == nil {
+			return errors.New("branch code already exists")
+		}
+	}
+
 	// Validate Country ID if provided
 	if branch.CountryID != nil && *branch.CountryID > 0 {
 		var country models.Country
@@ -88,11 +96,13 @@ func GetAllBranches() ([]models.Branch, error) {
 		Select("id", "name", "email", "coordinator_name", "contact_number", "established_on", "aashram_area",
 			"country_id", "state_id", "district_id", "city_id",
 			"address", "pincode", "post_office", "police_station", "open_days",
-			"daily_start_time", "daily_end_time", "created_on", "updated_on", "created_by", "updated_by").
+			"daily_start_time", "daily_end_time", "status", "ncr", "region_id", "branch_code",
+			"created_on", "updated_on", "created_by", "updated_by").
 		Preload("Country").
 		Preload("State").
 		Preload("District").
 		Preload("City").
+		Order("id DESC"). // Order by ID descending to show newest first
 		Find(&branches).Error; err != nil {
 		return nil, err
 	}
@@ -106,7 +116,8 @@ func GetBranch(branchID uint) (*models.Branch, error) {
 		Select("id", "name", "email", "coordinator_name", "contact_number", "established_on", "aashram_area",
 			"country_id", "state_id", "district_id", "city_id", "parent_branch_id",
 			"address", "pincode", "post_office", "police_station", "open_days",
-			"daily_start_time", "daily_end_time", "created_on", "updated_on", "created_by", "updated_by").
+			"daily_start_time", "daily_end_time", "status", "ncr", "region_id", "branch_code",
+			"created_on", "updated_on", "created_by", "updated_by").
 		Preload("Country").
 		Preload("State").
 		Preload("District").
@@ -128,28 +139,33 @@ func GetBranchSearch(branchName, coordinator string) ([]models.Branch, error) {
 		Select("id", "name", "email", "coordinator_name", "contact_number", "established_on", "aashram_area",
 			"country_id", "state_id", "district_id", "city_id",
 			"address", "pincode", "post_office", "police_station", "open_days",
-			"daily_start_time", "daily_end_time", "created_on", "updated_on", "created_by", "updated_by").
+			"daily_start_time", "daily_end_time", "status", "ncr", "region_id", "branch_code",
+			"created_on", "updated_on", "created_by", "updated_by").
 		Preload("Country").
 		Preload("State").
 		Preload("District").
 		Preload("City")
 
-	// Apply filters dynamically
-	if branchName != "" {
+	// Apply filters dynamically - use OR logic if both are provided
+	if branchName != "" && coordinator != "" {
+		// If both are provided, search for branches matching name OR coordinator
+		db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(coordinator_name) LIKE LOWER(?)",
+			"%"+branchName+"%", "%"+coordinator+"%")
+	} else if branchName != "" {
 		db = db.Where("LOWER(name) LIKE LOWER(?)", "%"+branchName+"%")
-	}
-	if coordinator != "" {
+	} else if coordinator != "" {
 		db = db.Where("LOWER(coordinator_name) LIKE LOWER(?)", "%"+coordinator+"%")
 	}
+
+	// Order by ID descending to show newest first
+	db = db.Order("id DESC")
 
 	if err := db.Find(&branches).Error; err != nil {
 		return nil, errors.New("error fetching branches")
 	}
 
-	if len(branches) == 0 {
-		return nil, errors.New("no branches found")
-	}
-
+	// Return empty array instead of error when no branches found
+	// This is a valid state, not an error
 	return branches, nil
 }
 
@@ -173,6 +189,16 @@ func UpdateBranch(branchID uint, updatedData map[string]interface{}) error {
 		var existingBranch models.Branch
 		if err := config.DB.Where("contact_number = ? AND id != ?", contactNumber, branchID).First(&existingBranch).Error; err == nil {
 			return errors.New("contact number already exists")
+		}
+	}
+
+	// Check branch_code uniqueness if being updated
+	if branchCode, ok := updatedData["branch_code"]; ok {
+		if branchCodeStr, ok := branchCode.(string); ok && branchCodeStr != "" {
+			var existingBranch models.Branch
+			if err := config.DB.Where("branch_code = ? AND id != ?", branchCodeStr, branchID).First(&existingBranch).Error; err == nil {
+				return errors.New("branch code already exists")
+			}
 		}
 	}
 
@@ -435,6 +461,34 @@ func UpdateBranchMember(id uint, updatedData map[string]interface{}) error {
 	var member models.BranchMember
 	if err := config.DB.First(&member, id).Error; err != nil {
 		return errors.New("member not found")
+	}
+
+	// Parse date_of_birth if provided as string
+	if dob, ok := updatedData["date_of_birth"]; ok && dob != nil {
+		if dobStr, ok := dob.(string); ok && dobStr != "" {
+			if parsedTime, err := time.Parse("2006-01-02", dobStr); err == nil {
+				updatedData["date_of_birth"] = &parsedTime
+			} else if parsedTime, err := time.Parse(time.RFC3339, dobStr); err == nil {
+				updatedData["date_of_birth"] = &parsedTime
+			} else {
+				// If parsing fails, remove it to avoid database error
+				delete(updatedData, "date_of_birth")
+			}
+		}
+	}
+
+	// Parse date_of_samarpan if provided as string
+	if dos, ok := updatedData["date_of_samarpan"]; ok && dos != nil {
+		if dosStr, ok := dos.(string); ok && dosStr != "" {
+			if parsedTime, err := time.Parse("2006-01-02", dosStr); err == nil {
+				updatedData["date_of_samarpan"] = &parsedTime
+			} else if parsedTime, err := time.Parse(time.RFC3339, dosStr); err == nil {
+				updatedData["date_of_samarpan"] = &parsedTime
+			} else {
+				// If parsing fails, remove it to avoid database error
+				delete(updatedData, "date_of_samarpan")
+			}
+		}
 	}
 
 	now := time.Now()

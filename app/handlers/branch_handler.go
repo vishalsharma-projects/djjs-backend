@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
 	"github.com/followCode/djjs-event-reporting-backend/app/validators"
+	"github.com/followCode/djjs-event-reporting-backend/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,15 +33,19 @@ type BranchCreateRequest struct {
 	DistrictID *uint       `json:"district_id,omitempty"`
 	CityID     *uint       `json:"city_id,omitempty"`
 
-	Address        string `json:"address,omitempty"`
-	Pincode        string `json:"pincode,omitempty"`
-	PostOffice     string `json:"post_office,omitempty"`
-	PoliceStation  string `json:"police_station,omitempty"`
-	OpenDays       string `json:"open_days,omitempty"`
-	DailyStartTime string `json:"daily_start_time,omitempty"`
-	DailyEndTime   string `json:"daily_end_time,omitempty"`
-	CreatedBy      string `json:"created_by,omitempty"`
-	UpdatedBy      string `json:"updated_by,omitempty"`
+	Address        string      `json:"address,omitempty"`
+	Pincode        string      `json:"pincode,omitempty"`
+	PostOffice     string      `json:"post_office,omitempty"`
+	PoliceStation  string      `json:"police_station,omitempty"`
+	OpenDays       string      `json:"open_days,omitempty"`
+	DailyStartTime string      `json:"daily_start_time,omitempty"`
+	DailyEndTime   string      `json:"daily_end_time,omitempty"`
+	Status         *bool       `json:"status,omitempty"`
+	NCR            *bool       `json:"ncr,omitempty"`
+	RegionID       *uint       `json:"region_id,omitempty"`
+	BranchCode     string      `json:"branch_code,omitempty"`
+	CreatedBy      string      `json:"created_by,omitempty"`
+	UpdatedBy      string      `json:"updated_by,omitempty"`
 	ParentBranch   interface{} `json:"parent_branch_id,omitempty"`
 
 	Infrastructure []InfrastructureEntry `json:"infrastructure,omitempty"`
@@ -72,8 +78,27 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 		OpenDays:        r.OpenDays,
 		DailyStartTime:  r.DailyStartTime,
 		DailyEndTime:    r.DailyEndTime,
+		BranchCode:      r.BranchCode,
 		CreatedBy:       r.CreatedBy,
 		UpdatedBy:       r.UpdatedBy,
+	}
+
+	// Handle boolean fields with defaults
+	if r.Status != nil {
+		branch.Status = *r.Status
+	} else {
+		branch.Status = true // default
+	}
+
+	if r.NCR != nil {
+		branch.NCR = *r.NCR
+	} else {
+		branch.NCR = false // default
+	}
+
+	// Handle RegionID
+	if r.RegionID != nil {
+		branch.RegionID = r.RegionID
 	}
 
 	if r.AashramArea != nil {
@@ -92,7 +117,7 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 	if r.CountryID != nil {
 		branch.CountryID = r.CountryID
 	} else if r.Country != nil {
-		countryID, err := parseID(r.Country)
+		countryID, err := parseLocationID(r.Country, "country")
 		if err == nil && countryID > 0 {
 			id := uint(countryID)
 			branch.CountryID = &id
@@ -103,7 +128,7 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 	if r.StateID != nil {
 		branch.StateID = r.StateID
 	} else if r.State != nil {
-		stateID, err := parseID(r.State)
+		stateID, err := parseLocationID(r.State, "state")
 		if err == nil && stateID > 0 {
 			id := uint(stateID)
 			branch.StateID = &id
@@ -114,7 +139,7 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 	if r.DistrictID != nil {
 		branch.DistrictID = r.DistrictID
 	} else if r.District != nil {
-		districtID, err := parseID(r.District)
+		districtID, err := parseLocationID(r.District, "district")
 		if err == nil && districtID > 0 {
 			id := uint(districtID)
 			branch.DistrictID = &id
@@ -125,7 +150,7 @@ func (r *BranchCreateRequest) ToBranch() (*models.Branch, error) {
 	if r.CityID != nil {
 		branch.CityID = r.CityID
 	} else if r.City != nil {
-		cityID, err := parseID(r.City)
+		cityID, err := parseLocationID(r.City, "city")
 		if err == nil && cityID > 0 {
 			id := uint(cityID)
 			branch.CityID = &id
@@ -163,6 +188,63 @@ func parseID(value interface{}) (uint, error) {
 	}
 }
 
+// parseLocationID converts location value (string name or number ID) to uint
+// If it's a string, it looks up the location by name in the database
+func parseLocationID(value interface{}, locationType string) (uint, error) {
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return 0, nil
+		}
+		// Try to parse as number first
+		if parsed, err := strconv.ParseUint(v, 10, 32); err == nil {
+			return uint(parsed), nil
+		}
+		// If not a number, look up by name
+		return lookupLocationByName(v, locationType)
+	case float64:
+		return uint(v), nil
+	case int:
+		return uint(v), nil
+	case uint:
+		return v, nil
+	default:
+		return 0, nil
+	}
+}
+
+// lookupLocationByName looks up a location ID by name in the database
+func lookupLocationByName(name string, locationType string) (uint, error) {
+	switch locationType {
+	case "country":
+		var country models.Country
+		if err := config.DB.Where("LOWER(name) = LOWER(?)", name).First(&country).Error; err != nil {
+			return 0, err
+		}
+		return country.ID, nil
+	case "state":
+		var state models.State
+		if err := config.DB.Where("LOWER(name) = LOWER(?)", name).First(&state).Error; err != nil {
+			return 0, err
+		}
+		return state.ID, nil
+	case "district":
+		var district models.District
+		if err := config.DB.Where("LOWER(name) = LOWER(?)", name).First(&district).Error; err != nil {
+			return 0, err
+		}
+		return district.ID, nil
+	case "city":
+		var city models.City
+		if err := config.DB.Where("LOWER(name) = LOWER(?)", name).First(&city).Error; err != nil {
+			return 0, err
+		}
+		return city.ID, nil
+	default:
+		return 0, nil
+	}
+}
+
 // parseTime parses time string
 func parseTime(timeStr string) (time.Time, error) {
 	layouts := []string{
@@ -182,6 +264,7 @@ func parseTime(timeStr string) (time.Time, error) {
 
 // CreateBranchHandler godoc
 // @Summary Create a new branch
+// @Description Create a new branch with optional infrastructure, child branches, and member associations
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Accept json
@@ -297,6 +380,7 @@ func CreateBranchHandler(c *gin.Context) {
 
 // GetAllBranchesHandler godoc
 // @Summary Get all branches
+// @Description Retrieve all branches with their related data (country, state, district, city, infrastructure, members)
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Produce json
@@ -314,11 +398,12 @@ func GetAllBranchesHandler(c *gin.Context) {
 
 // GetBranchHandler godoc
 // @Summary Get a branch by ID
+// @Description Retrieve a specific branch by its ID with all related data
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "Branch ID"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.Branch
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /api/branches/{id} [get]
@@ -341,9 +426,7 @@ func GetBranchHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"branch": branch,
-	})
+	c.JSON(http.StatusOK, branch)
 }
 
 // GetBranchSearchHandler godoc
@@ -361,24 +444,37 @@ func GetBranchSearchHandler(c *gin.Context) {
 	name := c.Query("name")
 	coordinator := c.Query("coordinator")
 
+	// Log search parameters for debugging
+	fmt.Printf("Search request - name: %s, coordinator: %s\n", name, coordinator)
+
 	branches, err := services.GetBranchSearch(name, coordinator)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		// Only return error for actual database errors, not for empty results
+		if err.Error() == "error fetching branches" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		// For "no branches found" or other cases, return empty array
+		c.JSON(http.StatusOK, []models.Branch{})
 		return
 	}
+
+	// Log results for debugging
+	fmt.Printf("Search results - found %d branches\n", len(branches))
 
 	c.JSON(http.StatusOK, branches)
 }
 
 // UpdateBranchHandler godoc
 // @Summary Update a branch
+// @Description Update branch details, infrastructure, child branches, and member associations
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
 // @Param id path int true "Branch ID"
 // @Param branch body map[string]interface{} true "Updated fields"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} models.Branch
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/branches/{id} [put]
@@ -519,6 +615,7 @@ func UpdateBranchHandler(c *gin.Context) {
 
 // DeleteBranchHandler godoc
 // @Summary Delete a branch
+// @Description Delete a branch by ID. This will also delete associated infrastructure and members
 // @Tags Branches
 // @Security ApiKeyAuth
 // @Produce json
@@ -697,21 +794,73 @@ func DeleteBranchInfrastructureHandler(c *gin.Context) {
 
 // *************************************** Branch Infrastructure ****************************************************** //
 
+// BranchMemberCreateRequest represents the request payload for creating a branch member
+type BranchMemberCreateRequest struct {
+	MemberType     string  `json:"member_type" binding:"required"`
+	Name           string  `json:"name" binding:"required"`
+	BranchRole     string  `json:"branch_role,omitempty"`
+	Responsibility string  `json:"responsibility,omitempty"`
+	Age            int     `json:"age,omitempty"`
+	Qualification  string  `json:"qualification,omitempty"`
+	DateOfBirth    *string `json:"date_of_birth,omitempty"`
+	DateOfSamarpan *string `json:"date_of_samarpan,omitempty"`
+	BranchID       uint    `json:"branch_id" binding:"required"`
+}
+
+// ToBranchMember converts the request to a BranchMember model
+func (r *BranchMemberCreateRequest) ToBranchMember() (*models.BranchMember, error) {
+	member := &models.BranchMember{
+		MemberType:     r.MemberType,
+		Name:           r.Name,
+		BranchRole:     r.BranchRole,
+		Responsibility: r.Responsibility,
+		Age:            r.Age,
+		Qualification:  r.Qualification,
+		BranchID:       r.BranchID,
+	}
+
+	// Parse DateOfBirth if provided
+	if r.DateOfBirth != nil && *r.DateOfBirth != "" {
+		dob, err := parseTime(*r.DateOfBirth)
+		if err == nil {
+			member.DateOfBirth = &dob
+		}
+	}
+
+	// Parse DateOfSamarpan if provided
+	if r.DateOfSamarpan != nil && *r.DateOfSamarpan != "" {
+		dos, err := parseTime(*r.DateOfSamarpan)
+		if err == nil {
+			member.DateOfSamarpan = &dos
+		}
+	}
+
+	return member, nil
+}
+
 // CreateBranchMemberHandler godoc
 // @Summary Create a new branch member
+// @Description Create a new member for a branch. Supports date_of_birth and date_of_samarpan in format "YYYY-MM-DD" or RFC3339
 // @Tags BranchMember
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param member body models.BranchMember true "Branch Member payload"
+// @Param member body BranchMemberCreateRequest true "Branch Member payload"
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/branch-member [post]
 func CreateBranchMemberHandler(c *gin.Context) {
-	var member models.BranchMember
-	if err := c.ShouldBindJSON(&member); err != nil {
+	var req BranchMemberCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert request to BranchMember model
+	member, err := req.ToBranchMember()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data: " + err.Error()})
 		return
 	}
 
@@ -721,7 +870,7 @@ func CreateBranchMemberHandler(c *gin.Context) {
 		return
 	}
 
-	if err := services.CreateBranchMember(&member); err != nil {
+	if err := services.CreateBranchMember(member); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -734,6 +883,7 @@ func CreateBranchMemberHandler(c *gin.Context) {
 
 // GetAllBranchMembersHandler godoc
 // @Summary Get all branch members
+// @Description Retrieve all branch members across all branches with their branch information
 // @Tags BranchMember
 // @Security ApiKeyAuth
 // @Produce json
@@ -751,6 +901,7 @@ func GetAllBranchMembersHandler(c *gin.Context) {
 
 // GetMembersByBranchHandler godoc
 // @Summary Get members of a branch
+// @Description Retrieve all members associated with a specific branch
 // @Tags BranchMember
 // @Security ApiKeyAuth
 // @Produce json
@@ -778,6 +929,7 @@ func GetMembersByBranchHandler(c *gin.Context) {
 
 // UpdateBranchMemberHandler godoc
 // @Summary Update a branch member
+// @Description Update branch member details. Date fields (date_of_birth, date_of_samarpan) accept "YYYY-MM-DD" or RFC3339 format
 // @Tags BranchMember
 // @Security ApiKeyAuth
 // @Accept json
@@ -818,6 +970,7 @@ func UpdateBranchMemberHandler(c *gin.Context) {
 
 // DeleteBranchMemberHandler godoc
 // @Summary Delete a branch member
+// @Description Delete a branch member by ID
 // @Tags BranchMember
 // @Security ApiKeyAuth
 // @Produce json
