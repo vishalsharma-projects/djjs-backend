@@ -40,4 +40,4 @@ tmp/
 temp/
 
 # SQL migration files
-*.sql
+# *.sql

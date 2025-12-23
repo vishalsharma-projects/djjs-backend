@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
@@ -112,10 +111,7 @@ func CreateEventRelatedData(eventID uint, payload struct {
 				}
 
 				if media.CompanyName != "" && media.FirstName != "" && media.LastName != "" {
-					if err := config.DB.Create(&media).Error; err != nil {
-						// Log error but continue with other records
-						fmt.Printf("Error creating event media: %v\n", err)
-					}
+					_ = config.DB.Create(&media)
 				}
 			}
 		}
@@ -160,9 +156,7 @@ func CreateEventRelatedData(eventID uint, payload struct {
 				}
 
 				if material.PromotionMaterialID > 0 && material.Quantity > 0 {
-					if err := config.DB.Create(&material).Error; err != nil {
-						fmt.Printf("Error creating promotion material: %v\n", err)
-					}
+					_ = config.DB.Create(&material)
 				}
 			}
 		}
@@ -225,9 +219,7 @@ func CreateEventRelatedData(eventID uint, payload struct {
 			}
 
 			if guest.Prefix != "" {
-				if err := config.DB.Create(&guest).Error; err != nil {
-					fmt.Printf("Error creating special guest: %v\n", err)
-				}
+				_ = config.DB.Create(&guest)
 			}
 		}
 	}
@@ -265,9 +257,7 @@ func CreateEventRelatedData(eventID uint, payload struct {
 			}
 
 			if volunteer.BranchID > 0 && volunteer.VolunteerName != "" {
-				if err := config.DB.Create(&volunteer).Error; err != nil {
-					fmt.Printf("Error creating volunteer: %v\n", err)
-				}
+				_ = config.DB.Create(&volunteer)
 			}
 		}
 	}
@@ -312,9 +302,7 @@ func CreateEventRelatedData(eventID uint, payload struct {
 			}
 
 			if donation.DonationType != "" {
-				if err := config.DB.Create(&donation).Error; err != nil {
-					fmt.Printf("Error creating donation: %v\n", err)
-				}
+				_ = config.DB.Create(&donation)
 			}
 		}
 	}

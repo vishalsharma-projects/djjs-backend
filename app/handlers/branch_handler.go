@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -444,9 +443,6 @@ func GetBranchSearchHandler(c *gin.Context) {
 	name := c.Query("name")
 	coordinator := c.Query("coordinator")
 
-	// Log search parameters for debugging
-	fmt.Printf("Search request - name: %s, coordinator: %s\n", name, coordinator)
-
 	branches, err := services.GetBranchSearch(name, coordinator)
 	if err != nil {
 		// Only return error for actual database errors, not for empty results
@@ -458,9 +454,6 @@ func GetBranchSearchHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, []models.Branch{})
 		return
 	}
-
-	// Log results for debugging
-	fmt.Printf("Search results - found %d branches\n", len(branches))
 
 	c.JSON(http.StatusOK, branches)
 }

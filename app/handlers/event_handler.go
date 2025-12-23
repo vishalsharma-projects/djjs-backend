@@ -48,33 +48,26 @@ func CreateEventHandler(c *gin.Context) {
 
 	// Try to bind frontend payload structure first
 	if err := c.ShouldBindJSON(&frontendPayload); err != nil {
-		// Log the binding error for debugging
-		log.Printf("Error binding JSON payload: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload format: " + err.Error()})
 		return
 	}
 
 	// Process frontend payload - map to EventDetails with status support
-	log.Printf("Received payload - GeneralDetails: %+v", frontendPayload.GeneralDetails)
 	event, err := services.MapFrontendPayloadToEventWithStatus(frontendPayload.GeneralDetails, frontendPayload.InvolvedParticipants, frontendPayload.Status)
 	if err != nil {
-		log.Printf("Error mapping frontend payload: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Validate event
-	log.Printf("Validating event - EventTypeID: %d, EventCategoryID: %d, StartDate: %v, EndDate: %v",
-		event.EventTypeID, event.EventCategoryID, event.StartDate, event.EndDate)
 	if err := validators.ValidateEventInput(event.EventTypeID, event.EventCategoryID, event.StartDate, event.EndDate); err != nil {
-		log.Printf("Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Create event in main table
 	if err := services.CreateEvent(event); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create event"})
 		return
 	}
 
@@ -88,12 +81,7 @@ func CreateEventHandler(c *gin.Context) {
 	// Delete draft ONLY after successful event creation (submit)
 	// This ensures draft is kept if user just saves as draft, and deleted only when submitting
 	if frontendPayload.DraftID != nil && *frontendPayload.DraftID > 0 {
-		if err := services.DeleteDraft(*frontendPayload.DraftID); err != nil {
-			// Log error but don't fail event creation - event is already saved
-			log.Printf("Warning: Failed to delete draft %d after event creation: %v", *frontendPayload.DraftID, err)
-		} else {
-			log.Printf("Draft %d deleted successfully after event submission", *frontendPayload.DraftID)
-		}
+		_ = services.DeleteDraft(*frontendPayload.DraftID)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -120,7 +108,7 @@ func GetAllEventsHandler(c *gin.Context) {
 	statusFilter := c.Query("status")
 	events, err := services.GetAllEvents(statusFilter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch events"})
 		return
 	}
 
@@ -444,9 +432,7 @@ func UpdateEventHandler(c *gin.Context) {
 
 		// Delete draft if provided
 		if frontendPayload.DraftID != nil && *frontendPayload.DraftID > 0 {
-			if err := services.DeleteDraft(*frontendPayload.DraftID); err != nil {
-				log.Printf("Warning: Failed to delete draft %d: %v", *frontendPayload.DraftID, err)
-			}
+			_ = services.DeleteDraft(*frontendPayload.DraftID)
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Event updated successfully"})

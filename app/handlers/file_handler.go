@@ -64,9 +64,6 @@ func UploadFileHandler(c *gin.Context) {
 		category = "Event Photos"
 	}
 
-	// Log category for tracking
-	fmt.Printf("Uploading file with category: %s, event_id: %d, filename: %s\n", category, eventID, file.Filename)
-
 	// Open file
 	src, err := file.Open()
 	if err != nil {
@@ -176,16 +173,11 @@ func UploadFileHandler(c *gin.Context) {
 	// Upload to S3
 	fileURL, err := services.UploadFile(c.Request.Context(), fileData, file.Filename, contentType, folder)
 	if err != nil {
-		// Log detailed error for debugging
-		fmt.Printf("S3 Upload Error for file %s (category: %s): %v\n", file.Filename, category, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("failed to upload file to S3: %v", err),
+			"error": "failed to upload file",
 		})
 		return
 	}
-
-	// Log successful S3 upload
-	fmt.Printf("File uploaded to S3 successfully: %s -> %s (category: %s, event_id: %d)\n", file.Filename, fileURL, category, eventID)
 
 	// Update or create EventMedia record
 	if mediaID > 0 {
@@ -229,12 +221,9 @@ func UploadFileHandler(c *gin.Context) {
 		}
 
 		if err := config.DB.Create(&media).Error; err != nil {
-			fmt.Printf("Error creating EventMedia record: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create media record"})
 			return
 		}
-
-		fmt.Printf("EventMedia record created: ID=%d, EventID=%d, FileURL=%s, Category=%s\n", media.ID, media.EventID, fileURL, category)
 
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "File uploaded successfully",
@@ -321,11 +310,8 @@ func DownloadFileHandler(c *gin.Context) {
 	// Generate presigned URL (valid for 1 hour)
 	presignedURL, err := services.GetPresignedURL(c.Request.Context(), s3Key, time.Hour)
 	if err != nil {
-		// Log detailed error for debugging
-		fmt.Printf("Error generating presigned URL for key %s: %v\n", s3Key, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to generate download URL",
-			"details": "Check AWS credentials and S3 bucket permissions",
 		})
 		return
 	}
@@ -425,10 +411,7 @@ func DeleteFileHandler(c *gin.Context) {
 	if fileURL != "" {
 		s3Key := services.GetS3KeyFromURL(fileURL)
 		if s3Key != "" {
-			if err := services.DeleteFile(c.Request.Context(), s3Key); err != nil {
-				// Log error but continue to delete database record
-				fmt.Printf("Warning: failed to delete file from S3: %v\n", err)
-			}
+			_ = services.DeleteFile(c.Request.Context(), s3Key)
 		}
 	}
 

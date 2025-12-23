@@ -20,6 +20,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,15 +40,43 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found, using system env variables")
+	// Set Gin mode based on environment
+	ginMode := os.Getenv("GIN_MODE")
+	if ginMode == "" {
+		ginMode = "release" // Default to release mode for production safety
+	}
+	gin.SetMode(ginMode)
+
+	// Load environment variables from .env file
+	// Try multiple locations to find .env file
+	wd, _ := os.Getwd()
+	envPaths := []string{
+		".env",                              // Current directory
+		filepath.Join(wd, ".env"),          // Absolute path from working directory
+		filepath.Join("..", "..", ".env"),  // Two levels up (if running from app/main/)
+	}
+	
+	var loaded bool
+	for _, envPath := range envPaths {
+		if err := godotenv.Load(envPath); err == nil {
+			loaded = true
+			break
+		}
+	}
+	
+	if !loaded {
+		log.Println("Warning: .env file not found, continuing with system environment variables...")
 	}
 
-	// 1️⃣ Connect to Postgres
+	// 1️⃣ Connect to Postgres (legacy GORM connection for existing routes)
 	config.ConnectDB()
 
-	// 2️⃣ Set JWT secret from environment
+	// 1️⃣b Initialize new auth system config (pgx + Redis)
+	if err := config.LoadAuthConfig(); err != nil {
+		log.Fatalf("Failed to load auth config: %v", err)
+	}
+
+	// 2️⃣ Set JWT secret from environment (legacy - also set in internal config)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is missing in .env")
@@ -57,21 +86,33 @@ func main() {
 	// 3️⃣ Initialize S3
 	if err := services.InitializeS3(); err != nil {
 		log.Printf("Warning: Failed to initialize S3: %v", err)
-	} else {
-		log.Println("S3 initialized successfully")
 	}
 
 	// 4️⃣ Create Gin router
-	r := gin.Default()
+	r := gin.New()
+	
+	// Add recovery middleware (gin.Default includes this, but we want to control it)
+	r.Use(gin.Recovery())
+	
+	// Add logger middleware only in debug mode
+	if ginMode == "debug" {
+		r.Use(gin.Logger())
+	}
 
 	// Add timeout middleware (30 seconds)
 	r.Use(middleware.TimeoutMiddleware(30 * time.Second))
 
 	// Enable CORS for Angular frontend
-	// Get allowed origins from environment, default to localhost for development
+	// Get allowed origins from environment - REQUIRED in production
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		allowedOrigins = "http://localhost:4200,http://localhost:3000"
+		if ginMode == "debug" {
+			// Only allow localhost in debug mode
+			allowedOrigins = "http://localhost:4200,http://localhost:3000"
+			log.Println("Warning: ALLOWED_ORIGINS not set, using localhost defaults (debug mode only)")
+		} else {
+			log.Fatal("ALLOWED_ORIGINS environment variable is required in production")
+		}
 	}
 	
 	origins := []string{}
@@ -88,8 +129,11 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Swagger documentation route
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Swagger documentation route - only enable if ENABLE_SWAGGER is set to "true"
+	// In production, this should be disabled or protected
+	if os.Getenv("ENABLE_SWAGGER") == "true" || ginMode == "debug" {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	// 5️⃣ Setup all API routes
 	api.SetupRoutes(r)

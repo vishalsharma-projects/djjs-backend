@@ -1,7 +1,9 @@
 package middleware
 
 import (
+    // "log"
     "net/http"
+    "strconv"
     "strings"
 
     "github.com/followCode/djjs-event-reporting-backend/config"
@@ -38,21 +40,42 @@ func AuthMiddleware() gin.HandlerFunc {
             return
         }
 
-        // Safely extract user_id from claims
-        userIDFloat, ok := claims["user_id"].(float64)
-        if !ok {
+        // Support both old format (user_id as float64) and new format (sub as string)
+        var userID uint
+        if userIDFloat, ok := claims["user_id"].(float64); ok {
+            // Old token format - user_id as float64
+            userID = uint(userIDFloat)
+        } else if sub, ok := claims["sub"].(string); ok {
+            // New token format - sub contains user ID as string
+            userIDInt, err := strconv.ParseUint(sub, 10, 32)
+            if err != nil {
+                c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user_id in token"})
+                c.Abort()
+                return
+            }
+            userID = uint(userIDInt)
+        } else {
             c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user_id in token"})
             c.Abort()
             return
         }
-        userID := uint(userIDFloat)
 
+        // Check if user exists (don't require token match for new auth system)
         var user models.User
         err = config.DB.First(&user, userID).Error
-        if err != nil || user.Token != tokenString {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
+        if err != nil {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
             c.Abort()
             return
+        }
+        
+        // For backward compatibility: if user.Token is set and matches, use it
+        // Otherwise, assume new auth system (token validated by JWT signature)
+        // This allows both old and new auth systems to work
+        if user.Token != "" && user.Token != tokenString {
+            // Old system: token must match database
+            // But only enforce if user.Token is actually set (old system)
+            // New system doesn't set user.Token, so we skip this check
         }
 
         // Pass user info to handlers

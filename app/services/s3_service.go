@@ -134,9 +134,7 @@ func GetPresignedURL(ctx context.Context, s3Key string, expiration time.Duration
 		Key:    aws.String(s3Key),
 	})
 	if err != nil {
-		// Log but don't fail - presigned URL might still work even if HeadObject fails
-		fmt.Printf("Warning: Could not verify object existence (bucket: %s, key: %s): %v\n", S3BucketName, s3Key, err)
-		fmt.Printf("This might indicate IAM permission issues. Ensure the IAM user has s3:GetObject permission.\n")
+		// Presigned URL might still work even if HeadObject fails
 	}
 
 	presignClient := s3.NewPresignClient(S3Client)
