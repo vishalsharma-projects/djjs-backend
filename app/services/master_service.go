@@ -184,3 +184,12 @@ func GetEventSubCategoriesByCategoryService(categoryID uint) ([]models.EventSubC
 	}
 	return subCategories, nil
 }
+
+// GetAllRolesService returns all roles
+func GetAllRolesService() ([]models.Role, error) {
+	var roles []models.Role
+	if err := config.DB.Order("name ASC").Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}

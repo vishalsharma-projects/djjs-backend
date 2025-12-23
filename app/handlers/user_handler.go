@@ -18,7 +18,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param user body models.User true "User payload"
-// @Success 201 {object} map[string]interface{}
+// @Success 201 {object} models.CreateUserResponse
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/users [post]
@@ -40,24 +40,13 @@ func CreateUserHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message":  "User created successfully",
-		"user":     user,
-		"password": user.Password, // show auto-generated password
-	})
+	response := models.CreateUserResponse{
+		Message:  "User created successfully",
+		User:     user,
+		Password: user.Password, // show auto-generated password
+	}
+	c.JSON(http.StatusCreated, response)
 }
-
-// CreateUserHandler godoc
-// @Summary Create a new user
-// @Description Create user with auto-generated password (returned in response)
-// @Tags Users
-// @Accept json
-// @Produce json
-// @Param user body models.User true "User payload"
-// @Success 201 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/users [post]
 
 // GetAllUsersHandler godoc
 // @Summary     Get all users
@@ -85,6 +74,7 @@ func GetAllUsersHandler(c *gin.Context) {
 // @Param       email           query string false "User Email"
 // @Param       contact_number  query string false "User Contact Number"
 // @Success     200 {array} models.User
+// @Failure     400 {object} map[string]string
 // @Failure     404 {object} map[string]string
 // @Router      /api/users/search [get]
 func GetUserSearchHandler(c *gin.Context) {
@@ -104,6 +94,38 @@ func GetUserSearchHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+// GetUserByIDHandler godoc
+// @Summary     Get user by ID
+// @Description Retrieve a single user by their ID
+// @Tags        Users
+// @Security    ApiKeyAuth
+// @Produce     json
+// @Param       id  path int true "User ID"
+// @Success     200 {object} models.User
+// @Failure     404 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /api/users/{id} [get]
+func GetUserByIDHandler(c *gin.Context) {
+	idParam := c.Param("id")
+	userID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := services.GetUserByID(uint(userID))
+	if err != nil {
+		if err == services.ErrUserNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }
 
 // UpdateUserHandler godoc
@@ -239,7 +261,7 @@ func ChangePasswordHandler(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.ResetPasswordResponse
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/users/{id}/reset-password [post]
@@ -257,8 +279,9 @@ func ResetPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Password reset successfully",
-		"password": newPassword,
-	})
+	response := models.ResetPasswordResponse{
+		Message:  "Password reset successfully",
+		Password: newPassword,
+	}
+	c.JSON(http.StatusOK, response)
 }

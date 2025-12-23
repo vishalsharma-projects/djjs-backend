@@ -13,7 +13,8 @@ func SetupUserRoutes(r *gin.RouterGroup) {
 	{
 		users.POST("", handlers.CreateUserHandler)
 		users.GET("", handlers.GetAllUsersHandler)
-		users.GET("/:id", handlers.GetUserSearchHandler)
+		users.GET("/search", handlers.GetUserSearchHandler)
+		users.GET("/:id", handlers.GetUserByIDHandler)
 		users.PUT("/:id", handlers.UpdateUserHandler)
 		users.DELETE("/:id", handlers.DeleteUserHandler)
 		users.POST("/:id/change-password", handlers.ChangePasswordHandler)

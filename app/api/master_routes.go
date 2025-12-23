@@ -27,6 +27,7 @@ func SetupMasterRoutes(r *gin.RouterGroup) {
 		master.GET("/seva-types", handlers.GetAllSevaTypesHandler)
 		master.GET("/event-sub-categories", handlers.GetAllEventSubCategoriesHandler)
 		master.GET("/event-sub-categories/by-category", handlers.GetEventSubCategoriesByCategoryHandler)
+		master.GET("/roles", handlers.GetAllRolesHandler)
 	}
 }
 

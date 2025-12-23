@@ -375,3 +375,23 @@ func GetEventSubCategoriesByCategoryHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, subCategories)
 }
+
+// --------------------- Roles ---------------------
+
+// GetAllRolesHandler godoc
+// @Summary Get all roles
+// @Description Returns a list of all roles
+// @Tags Roles
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} models.Role
+// @Failure 500 {object} map[string]string
+// @Router /api/roles [get]
+func GetAllRolesHandler(c *gin.Context) {
+	roles, err := services.GetAllRolesService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, roles)
+}

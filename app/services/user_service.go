@@ -79,10 +79,10 @@ func GetAllUsers() ([]models.User, error) {
 	return users, nil
 }
 
-// GetUserSearch fetches a single user by email, contact
+// GetUserSearch fetches users by email, contact (excluding deleted)
 func GetUserSearch(email, contact string) ([]models.User, error) {
 	var users []models.User
-	query := config.DB.Model(&models.User{}).Preload("Role")
+	query := config.DB.Model(&models.User{}).Preload("Role").Where("is_deleted = ?", false)
 
 	// Dynamically build WHERE conditions
 	if email != "" && contact != "" {
@@ -95,7 +95,10 @@ func GetUserSearch(email, contact string) ([]models.User, error) {
 
 	// Execute query
 	if err := query.Find(&users).Error; err != nil {
-		return nil, errors.New("no users found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("no users found")
+		}
+		return nil, err
 	}
 
 	if len(users) == 0 {
@@ -103,6 +106,18 @@ func GetUserSearch(email, contact string) ([]models.User, error) {
 	}
 
 	return users, nil
+}
+
+// GetUserByID fetches a single user by ID
+func GetUserByID(userID uint) (*models.User, error) {
+	var user models.User
+	if err := config.DB.Preload("Role").Where("id = ? AND is_deleted = ?", userID, false).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 var ErrUserNotFound = errors.New("user not found")
