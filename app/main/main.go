@@ -40,13 +40,6 @@ import (
 )
 
 func main() {
-	// Set Gin mode based on environment
-	ginMode := os.Getenv("GIN_MODE")
-	if ginMode == "" {
-		ginMode = "release" // Default to release mode for production safety
-	}
-	gin.SetMode(ginMode)
-
 	// Load environment variables from .env file
 	// Try multiple locations to find .env file
 	wd, _ := os.Getwd()
@@ -59,13 +52,19 @@ func main() {
 	var loaded bool
 	for _, envPath := range envPaths {
 		if err := godotenv.Load(envPath); err == nil {
+			log.Printf("Loaded .env file from: %s", envPath)
 			loaded = true
 			break
+		} else {
+			// Debug: log the error for troubleshooting
+			log.Printf("Failed to load .env from %s: %v", envPath, err)
 		}
 	}
 	
 	if !loaded {
-		log.Println("Warning: .env file not found, continuing with system environment variables...")
+		log.Printf("Warning: .env file not found in any of these locations: %v", envPaths)
+		log.Printf("Current working directory: %s", wd)
+		log.Println("Continuing with system environment variables...")
 	}
 
 	// 1️⃣ Connect to Postgres (legacy GORM connection for existing routes)
@@ -95,7 +94,7 @@ func main() {
 	r.Use(gin.Recovery())
 	
 	// Add logger middleware only in debug mode
-	if ginMode == "debug" {
+	if gin.Mode() == gin.DebugMode {
 		r.Use(gin.Logger())
 	}
 
@@ -106,7 +105,7 @@ func main() {
 	// Get allowed origins from environment - REQUIRED in production
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		if ginMode == "debug" {
+		if gin.Mode() == gin.DebugMode {
 			// Only allow localhost in debug mode
 			allowedOrigins = "http://localhost:4200,http://localhost:3000"
 			log.Println("Warning: ALLOWED_ORIGINS not set, using localhost defaults (debug mode only)")
@@ -131,7 +130,7 @@ func main() {
 
 	// Swagger documentation route - only enable if ENABLE_SWAGGER is set to "true"
 	// In production, this should be disabled or protected
-	if os.Getenv("ENABLE_SWAGGER") == "true" || ginMode == "debug" {
+	if os.Getenv("ENABLE_SWAGGER") == "true" || gin.Mode() == gin.DebugMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 

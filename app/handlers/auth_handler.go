@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	// "log"
+    "log"
 	"net/http"
 	"time"
 
@@ -124,6 +124,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, accessToken, refreshToken, err := h.authService.Login(c.Request.Context(), req.Email, req.Password, ip, userAgent)
 	if err != nil {
+		// Log the actual error for debugging (remove in production)
+		// fmt.Printf("Login error: %v\n", err)
+		
+		// Generic error message - don't reveal if email exists
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -156,17 +160,22 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Get refresh token from cookie
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
+		// Log the error for debugging
+		log.Printf("[Refresh] Failed to get refresh_token cookie: %v", err)
+		log.Printf("[Refresh] Request cookies: %v", c.Request.Cookies())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token missing"})
 		return
 	}
 
 	if refreshToken == "" {
+		log.Printf("[Refresh] Refresh token cookie is empty")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token missing"})
 		return
 	}
 
 	accessToken, newRefreshToken, err := h.authService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
+		log.Printf("[Refresh] Refresh token validation failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
 		return
 	}
@@ -403,15 +412,18 @@ func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, token string) {
 	// Empty domain allows cookie to work on localhost
 	domain := ""
 	
-		c.SetCookie(
-			"refresh_token",
-			token,
-			maxAge,
-			config.CookiePath,
-			domain, // Empty for localhost
-			config.CookieSecure, // Should be false for localhost HTTP
-			true, // HttpOnly
-		)
+	c.SetCookie(
+		"refresh_token",
+		token,
+		maxAge,
+		config.CookiePath,
+		domain, // Empty for localhost
+		config.CookieSecure, // Should be false for localhost HTTP
+		true, // HttpOnly
+	)
+	
+	log.Printf("[setRefreshTokenCookie] Cookie set: path=%s, domain='%s', secure=%v, maxAge=%d", 
+		config.CookiePath, domain, config.CookieSecure, maxAge)
 }
 
 func (h *AuthHandler) clearAuthCookies(c *gin.Context) {

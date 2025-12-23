@@ -1,7 +1,7 @@
 package middleware
 
 import (
-    // "log"
+    "log"
     "net/http"
     "strconv"
     "strings"
@@ -45,16 +45,20 @@ func AuthMiddleware() gin.HandlerFunc {
         if userIDFloat, ok := claims["user_id"].(float64); ok {
             // Old token format - user_id as float64
             userID = uint(userIDFloat)
+            log.Printf("[AuthMiddleware] Using old token format, user_id: %d", userID)
         } else if sub, ok := claims["sub"].(string); ok {
             // New token format - sub contains user ID as string
             userIDInt, err := strconv.ParseUint(sub, 10, 32)
             if err != nil {
+                log.Printf("[AuthMiddleware] Failed to parse sub claim '%s': %v", sub, err)
                 c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user_id in token"})
                 c.Abort()
                 return
             }
             userID = uint(userIDInt)
+            log.Printf("[AuthMiddleware] Using new token format, sub: %s, user_id: %d", sub, userID)
         } else {
+            log.Printf("[AuthMiddleware] Token missing both user_id and sub claims")
             c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user_id in token"})
             c.Abort()
             return
@@ -76,6 +80,7 @@ func AuthMiddleware() gin.HandlerFunc {
             // Old system: token must match database
             // But only enforce if user.Token is actually set (old system)
             // New system doesn't set user.Token, so we skip this check
+            log.Printf("[AuthMiddleware] Token mismatch for user %d (old system check)", userID)
         }
 
         // Pass user info to handlers
