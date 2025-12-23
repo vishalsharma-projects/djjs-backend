@@ -1,4 +1,4 @@
-name: Debug & Deploy (Docker → ECR)
+name: Build & Deploy Backend (Docker → ECR)
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -14,15 +13,16 @@ env:
   CONTAINER_NAME: djjs-backend
   HOST_PORT: 8080
   CONTAINER_PORT: 8080
-  ECR_REPOSITORY: 775727899931.dkr.ecr.ap-south-1.amazonaws.com/djjs-backend
   AWS_REGION: ap-south-1
-  BRIDGE_NETWORK: djjs-net   # ← custom bridge network
+  ECR_REPOSITORY: 775727899931.dkr.ecr.ap-south-1.amazonaws.com/djjs-backend
+  BRIDGE_NETWORK: djjs-net
 
 jobs:
-  debug_and_push:
+  build_and_push:
     runs-on: [self-hosted, Linux, X64, label-3]
     outputs:
-      image-tag: ${{ steps.set_tag.outputs.TAG }}
+      image-tag: ${{ steps.meta.outputs.tag }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,100 +30,97 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Detect AWS CLI path
-        id: detect_aws
+      - name: Login to ECR
         run: |
-          echo "🔍 Searching for AWS CLI binary..."
-          for path in /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws /usr/bin/aws; do
-            if [ -f "$path" ]; then
-              echo "✅ Found AWS CLI at: $path"
-              echo "AWS_BIN=$path" >> $GITHUB_ENV
-              exit 0
-            fi
-          done
-          echo "❌ AWS CLI not found! Exiting..."
-          exit 1
+          aws ecr get-login-password --region ${AWS_REGION} \
+            | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
 
-      - name: Verify AWS Identity
-        run: |
-          $AWS_BIN sts get-caller-identity --region ${AWS_REGION} || echo "⚠️ Failed to verify AWS identity"
-
-      - name: Log in to ECR
-        run: |
-          $AWS_BIN ecr get-login-password --region ${AWS_REGION} | \
-            docker login --username AWS --password-stdin ${ECR_REPOSITORY}
-
-      - name: Build & push image
-        id: set_tag
+      - name: Build, tag, and push image
+        id: meta
         run: |
           TAG=${GITHUB_SHA::7}
-          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
-          IMAGE_URI="${ECR_REPOSITORY}:${TAG}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
           docker build -t ${IMAGE_NAME}:${TAG} -t ${IMAGE_NAME}:latest .
-          docker tag ${IMAGE_NAME}:${TAG} ${IMAGE_URI}
-          docker push ${IMAGE_URI}
+          docker tag ${IMAGE_NAME}:${TAG} ${ECR_REPOSITORY}:${TAG}
           docker tag ${IMAGE_NAME}:${TAG} ${ECR_REPOSITORY}:latest
+
+          docker push ${ECR_REPOSITORY}:${TAG}
           docker push ${ECR_REPOSITORY}:latest
 
   deploy:
-    needs: debug_and_push
+    needs: build_and_push
     runs-on: [self-hosted, Linux, X64, label-3]
+
+    env:
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+      PG_PORT: ${{ secrets.PG_PORT }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
     steps:
-      - name: Configure AWS credentials for deploy
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Detect AWS CLI path (Deploy)
+      - name: Login to ECR
         run: |
-          echo "🔍 Checking AWS CLI path..."
-          for path in /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws /usr/bin/aws; do
-            if [ -f "$path" ]; then
-              echo "✅ Found AWS CLI at: $path"
-              echo "AWS_BIN=$path" >> $GITHUB_ENV
-              exit 0
-            fi
-          done
-          echo "❌ AWS CLI not found in deploy stage"
-          exit 1
+          aws ecr get-login-password --region ${AWS_REGION} \
+            | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
 
-      - name: Pull & run container (Bridge Network)
+      - name: Pull image
         run: |
-          TAG=${{ needs.debug_and_push.outputs.image-tag }}
-          if [ -z "$TAG" ]; then
-            echo "❌ TAG missing, cannot deploy"
-            exit 1
-          fi
-          IMAGE_URI="${ECR_REPOSITORY}:${TAG}"
-          $AWS_BIN ecr get-login-password --region ${AWS_REGION} | \
-            docker login --username AWS --password-stdin ${ECR_REPOSITORY}
-          docker pull ${IMAGE_URI}
+          TAG=${{ needs.build_and_push.outputs.image-tag }}
+          docker pull ${ECR_REPOSITORY}:${TAG}
 
-          echo "🛑 Stopping existing container (if any)..."
-          docker ps -aq -f name=${CONTAINER_NAME} | xargs -r docker stop
+      - name: Stop existing container
+        run: |
           docker rm -f ${CONTAINER_NAME} || true
 
-          echo "🚀 Running container in custom bridge network..."
-          docker run -d --name ${CONTAINER_NAME} \
+      - name: Run container with env vars (FIX)
+        run: |
+          TAG=${{ needs.build_and_push.outputs.image-tag }}
+
+          docker run -d \
+            --name ${CONTAINER_NAME} \
             --network ${BRIDGE_NETWORK} \
             -p ${HOST_PORT}:${CONTAINER_PORT} \
             --restart always \
-            ${IMAGE_URI}
+            -e POSTGRES_USER \
+            -e POSTGRES_PASSWORD \
+            -e POSTGRES_DB \
+            -e POSTGRES_HOST \
+            -e PG_PORT \
+            -e JWT_SECRET \
+            -e AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY \
+            -e AWS_S3_BUCKET_NAME \
+            -e AWS_REGION \
+            ${ECR_REPOSITORY}:${TAG}
 
-      - name: Health check (Bridge Network)
+      - name: Verify env inside container
         run: |
-          echo "🩺 Checking health at http://127.0.0.1:${HOST_PORT}"
-          curl -I --max-time 10 http://127.0.0.1:${HOST_PORT} | head -n1 || echo "⚠️ Health check may have failed"
+          docker exec ${CONTAINER_NAME} printenv | grep POSTGRES_HOST
 
-      - name: Cleanup
-        if: ${{ success() }}
+      - name: Health check
         run: |
-          docker image prune -a -f
-          docker volume prune -f
-          docker system df
+          sleep 5
+          curl -f http://127.0.0.1:${HOST_PORT} || exit 1
+
+      - name: Cleanup unused images
+        run: |
+          docker image prune -f
