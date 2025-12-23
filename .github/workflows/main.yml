@@ -14,10 +14,8 @@ env:
   CONTAINER_NAME: djjs-backend
   HOST_PORT: 8080
   CONTAINER_PORT: 8080
-  # Using your confirmed Account ID
   ECR_REPOSITORY: 775727899931.dkr.ecr.ap-south-1.amazonaws.com/djjs-backend
   AWS_REGION: ap-south-1
-  BRIDGE_NETWORK: djjs-net
 
 jobs:
   debug_and_push:
@@ -36,11 +34,7 @@ jobs:
 
       - name: Log in to ECR
         run: |
-          # Detecting AWS Path
-          for path in /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws /usr/bin/aws; do
-            if [ -f "$path" ]; then AWS_BIN=$path; break; fi
-          done
-          $AWS_BIN ecr get-login-password --region ${AWS_REGION} | \
+          aws ecr get-login-password --region ${AWS_REGION} | \
             docker login --username AWS --password-stdin ${ECR_REPOSITORY}
 
       - name: Build & push image
@@ -70,17 +64,24 @@ jobs:
           TAG=${{ needs.debug_and_push.outputs.image-tag }}
           IMAGE_URI="${ECR_REPOSITORY}:${TAG}"
           
-          # Login and Pull
-          for path in /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws /usr/bin/aws; do
-            if [ -f "$path" ]; then AWS_BIN=$path; break; fi
-          done
-          $AWS_BIN ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
+          # Login
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
           
+          # Pull latest image
           docker pull ${IMAGE_URI}
+          
+          # Remove old container if exists
           docker rm -f ${CONTAINER_NAME} || true
           
+          # RUN WITH DATABASE ENV VARIABLES
+          # --add-host=host.docker.internal:host-gateway allows container to talk to Host OS
           docker run -d --name ${CONTAINER_NAME} \
-            --network ${BRIDGE_NETWORK} \
+            --add-host=host.docker.internal:host-gateway \
             -p ${HOST_PORT}:${CONTAINER_PORT} \
+            -e POSTGRES_HOST=host.docker.internal \
+            -e POSTGRES_PORT=5432 \
+            -e POSTGRES_USER="${{ secrets.DB_USER }}" \
+            -e POSTGRES_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            -e POSTGRES_DB="${{ secrets.DB_NAME }}" \
             --restart always \
             ${IMAGE_URI}
