@@ -130,6 +130,17 @@ func GetAllEventsHandler(c *gin.Context) {
 		if errMedia != nil {
 			mediaList = []models.EventMedia{}
 		}
+		// Convert to presigned URLs - HARD GUARD: fail fast if S3Key is empty
+		mediaListWithPresignedURLs, err := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), mediaList)
+		if err != nil {
+			// Fail fast - return HTTP 500 with structured error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to generate presigned URLs for event media",
+				"details": err.Error(),
+			})
+			return
+		}
+		mediaList = mediaListWithPresignedURLs
 
 		// Get promotion materials count
 		promotionMaterials, errPromo := services.GetPromotionMaterialDetailsByEventID(event.ID)
@@ -235,6 +246,17 @@ func GetEventByIdHandler(c *gin.Context) {
 		// Media service returns error if not found, treat as empty array
 		mediaList = []models.EventMedia{}
 	}
+		// Convert to presigned URLs - HARD GUARD: fail fast if S3Key is empty
+		mediaListWithPresignedURLs, err := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), mediaList)
+		if err != nil {
+			// Fail fast - return HTTP 500 with structured error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to generate presigned URLs for event media",
+				"details": err.Error(),
+			})
+			return
+		}
+		mediaList = mediaListWithPresignedURLs
 
 	// Fetch promotion materials
 	promotionMaterials, errPromo := services.GetPromotionMaterialDetailsByEventID(uint(eventID))
@@ -540,6 +562,17 @@ func DownloadEventHandler(c *gin.Context) {
 	specialGuests, _ := services.GetSpecialGuestByEventID(uint(eventID))
 	volunteers, _ := services.GetVolunteerByEventID(uint(eventID))
 	mediaList, _ := services.GetEventMediaByEventID(uint(eventID))
+	// Convert to presigned URLs - HARD GUARD: fail fast if S3Key is empty
+	mediaListWithPresignedURLs, err := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), mediaList)
+	if err != nil {
+		// Fail fast - return HTTP 500 with structured error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to generate presigned URLs for event media",
+			"details": err.Error(),
+		})
+		return
+	}
+	mediaList = mediaListWithPresignedURLs
 	promotionMaterials, _ := services.GetPromotionMaterialDetailsByEventID(uint(eventID))
 	donations, _ := services.GetDonationsByEvent(uint(eventID))
 

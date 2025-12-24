@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
@@ -60,19 +61,34 @@ func GetAllEventMediaHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch records"})
 		return
 	}
+	
+	// Convert to presigned URLs - fail fast on errors
+	mediasWithPresignedURLs, err := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), medias)
+	if err != nil {
+		// Fail fast - return HTTP 500 with structured error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to generate presigned URLs",
+			"details": err.Error(),
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Event Media fetched successfully",
-		"data":    medias,
+		"data":    mediasWithPresignedURLs,
 	})
 }
 
 // GetEventMediaByEventIDHandler godoc
 // @Summary Get Event Media by Event ID
-// @Description Get all Event Media records for a specific Event ID
+// @Description Get Event Media records for a specific Event ID with optional cursor-based pagination
 // @Tags EventMedia
 // @Security ApiKeyAuth
 // @Produce json
 // @Param event_id path int true "Event ID"
+// @Param limit query int false "Number of items per page (default: 20, max: 100)"
+// @Param cursor_created_at query string false "Cursor: created_at timestamp (RFC3339)"
+// @Param cursor_id query int false "Cursor: media ID"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Router /api/event-media/event/{event_id} [get]
@@ -84,15 +100,71 @@ func GetEventMediaByEventIDHandler(c *gin.Context) {
 		return
 	}
 
-	mediaList, err := services.GetEventMediaByEventID(uint(eventID))
-	// Return empty array if no media found (not an error)
+	// Parse pagination parameters
+	limitParam := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil || limit <= 0 {
+		limit = 20
+	}
+
+	// Parse cursor if provided
+	var cursor *services.PaginationCursor
+	cursorCreatedAtStr := c.Query("cursor_created_at")
+	cursorIDStr := c.Query("cursor_id")
+	if cursorCreatedAtStr != "" && cursorIDStr != "" {
+		cursorCreatedAt, err := time.Parse(time.RFC3339, cursorCreatedAtStr)
+		if err == nil {
+			cursorID, err := strconv.ParseUint(cursorIDStr, 10, 64)
+			if err == nil {
+				cursor = &services.PaginationCursor{
+					CreatedAt: cursorCreatedAt,
+					ID:        uint(cursorID),
+				}
+			}
+		}
+	}
+
+	// Use cursor-based pagination
+	paginatedResult, err := services.GetEventMediaByEventIDPaginated(uint(eventID), limit, cursor)
 	if err != nil {
-		mediaList = []models.EventMedia{}
+		// Fallback to non-paginated for backward compatibility
+		mediaList, fallbackErr := services.GetEventMediaByEventID(uint(eventID))
+		if fallbackErr != nil {
+			mediaList = []models.EventMedia{}
+		}
+		// Convert to presigned URLs - fail fast on errors
+		mediaListWithPresignedURLs, fallbackErr := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), mediaList)
+		if fallbackErr != nil {
+			// Fail fast - return HTTP 500 with structured error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "failed to generate presigned URLs",
+				"details": fallbackErr.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Event Media fetched successfully",
+			"data":    mediaListWithPresignedURLs,
+		})
+		return
+	}
+
+	// Convert to presigned URLs - fail fast on errors
+	mediaListWithPresignedURLs, err := services.ConvertEventMediaToPresignedURLs(c.Request.Context(), paginatedResult.Data)
+	if err != nil {
+		// Fail fast - return HTTP 500 with structured error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to generate presigned URLs",
+			"details": err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Event Media fetched successfully",
-		"data":    mediaList,
+		"message":    "Event Media fetched successfully",
+		"data":       mediaListWithPresignedURLs,
+		"next_cursor": paginatedResult.NextCursor,
+		"has_more":   paginatedResult.HasMore,
 	})
 }
 

@@ -40,9 +40,20 @@ func GetBranchMediaByBranchIDHandler(c *gin.Context) {
 		mediaList = []models.BranchMedia{}
 	}
 
+	// Convert to presigned URLs - fail fast on errors
+	mediaListWithPresignedURLs, err := services.ConvertBranchMediaToPresignedURLs(c.Request.Context(), mediaList)
+	if err != nil {
+		// Fail fast - return HTTP 500 with structured error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to generate presigned URLs",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Branch Media fetched successfully",
-		"data":    mediaList,
+		"data":    mediaListWithPresignedURLs,
 	})
 }
 
@@ -61,9 +72,21 @@ func GetAllBranchMediaHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch records"})
 		return
 	}
+	
+	// Convert to presigned URLs - fail fast on errors
+	mediasWithPresignedURLs, err := services.ConvertBranchMediaToPresignedURLs(c.Request.Context(), medias)
+	if err != nil {
+		// Fail fast - return HTTP 500 with structured error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to generate presigned URLs",
+			"details": err.Error(),
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Branch Media fetched successfully",
-		"data":    medias,
+		"data":    mediasWithPresignedURLs,
 	})
 }
 

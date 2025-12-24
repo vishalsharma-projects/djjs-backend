@@ -26,6 +26,12 @@ var (
 	S3Region     string
 )
 
+// UploadResult contains the result of an S3 upload
+type UploadResult struct {
+	S3Key          string // Opaque S3 object key (UUID-based)
+	OriginalFilename string // Original filename from upload
+}
+
 // InitializeS3 initializes the S3 client and uploader with credentials
 func InitializeS3() error {
 	// Get credentials from environment variables
@@ -70,24 +76,25 @@ func InitializeS3() error {
 	return nil
 }
 
-// UploadFile uploads a file to S3 and returns the S3 URL
-func UploadFile(ctx context.Context, fileData []byte, fileName string, contentType string, folder string) (string, error) {
+// UploadFile uploads a file to S3 and returns the S3 key and original filename
+// S3 keys are opaque UUID-based to decouple from original filenames
+func UploadFile(ctx context.Context, fileData []byte, fileName string, contentType string, folder string) (*UploadResult, error) {
 	if S3Client == nil {
 		if err := InitializeS3(); err != nil {
-			return "", fmt.Errorf("failed to initialize S3: %w", err)
+			return nil, fmt.Errorf("failed to initialize S3: %w", err)
 		}
 	}
 
-	// Generate unique filename
+	// Generate opaque, collision-safe S3 key using UUID
+	// Format: {folder}/{uuid}.{ext}
 	ext := filepath.Ext(fileName)
-	uniqueFileName := fmt.Sprintf("%s/%s%s", folder, uuid.New().String(), ext)
+	s3Key := fmt.Sprintf("%s/%s%s", folder, uuid.New().String(), ext)
 
 	// Upload file to S3 with Standard storage class for immediate access
-	// Changed from Glacier Instant Retrieval to Standard for better accessibility
 	storageClass := types.StorageClassStandard
 	putInput := &s3.PutObjectInput{
 		Bucket:       aws.String(S3BucketName),
-		Key:          aws.String(uniqueFileName),
+		Key:          aws.String(s3Key),
 		Body:         bytes.NewReader(fileData),
 		ContentType:  aws.String(contentType),
 		StorageClass: storageClass,
@@ -99,18 +106,29 @@ func UploadFile(ctx context.Context, fileData []byte, fileName string, contentTy
 
 	// Note: ACL is not set because the bucket has ACLs disabled
 	// Public access should be configured via bucket policy instead
-	// If you need public access, configure the bucket policy in AWS Console
+	// All access should use presigned URLs for security
 
 	_, err := S3Uploader.Upload(ctx, putInput)
 	if err != nil {
 		// Return detailed error for debugging
-		return "", fmt.Errorf("S3 upload failed (bucket: %s, key: %s): %w", S3BucketName, uniqueFileName, err)
+		return nil, fmt.Errorf("S3 upload failed (bucket: %s, key: %s): %w", S3BucketName, s3Key, err)
 	}
 
-	// Return the S3 URL - use presigned URL format for better compatibility
-	// For direct access, we'll use the standard S3 URL format
-	// Note: If bucket is not public, frontend should use presigned URLs via /api/files/{media_id}/download
-	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", S3BucketName, S3Region, uniqueFileName)
+	return &UploadResult{
+		S3Key:           s3Key,
+		OriginalFilename: fileName,
+	}, nil
+}
+
+// UploadFileLegacy uploads a file to S3 and returns the S3 URL (legacy compatibility)
+// Deprecated: Use UploadFile() instead which returns S3 key separately
+func UploadFileLegacy(ctx context.Context, fileData []byte, fileName string, contentType string, folder string) (string, error) {
+	result, err := UploadFile(ctx, fileData, fileName, contentType, folder)
+	if err != nil {
+		return "", err
+	}
+	// Return legacy URL format for backward compatibility
+	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", S3BucketName, S3Region, result.S3Key)
 	return url, nil
 }
 
@@ -129,12 +147,14 @@ func GetPresignedURL(ctx context.Context, s3Key string, expiration time.Duration
 
 	// Verify object exists (optional check - can be removed if it causes performance issues)
 	// This helps identify permission issues early
+	// Note: We don't fail - presigned URL might still work even if HeadObject fails
 	_, err := S3Client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(S3BucketName),
 		Key:    aws.String(s3Key),
 	})
 	if err != nil {
-		// Presigned URL might still work even if HeadObject fails
+		// Presigned URL generation might still succeed even if HeadObject fails
+		// Continue without logging to avoid noise
 	}
 
 	presignClient := s3.NewPresignClient(S3Client)

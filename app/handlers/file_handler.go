@@ -170,8 +170,8 @@ func UploadFileHandler(c *gin.Context) {
 
 	folder := services.GetFolderFromFileType(fileType)
 
-	// Upload to S3
-	fileURL, err := services.UploadFile(c.Request.Context(), fileData, file.Filename, contentType, folder)
+	// Upload to S3 - returns opaque S3 key and original filename
+	uploadResult, err := services.UploadFile(c.Request.Context(), fileData, file.Filename, contentType, folder)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to upload file",
@@ -188,8 +188,12 @@ func UploadFileHandler(c *gin.Context) {
 			return
 		}
 
-		media.FileURL = fileURL
+		// Store S3 key and original filename separately
+		// DO NOT store raw S3 URLs - all access must use presigned URLs
+		media.S3Key = uploadResult.S3Key
+		media.OriginalFilename = uploadResult.OriginalFilename
 		media.FileType = fileType
+		// FileURL is deprecated - leave empty to prevent raw URL usage
 		if err := config.DB.Save(&media).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update media record"})
 			return
@@ -199,20 +203,23 @@ func UploadFileHandler(c *gin.Context) {
 			"message": "File uploaded and media updated successfully",
 			"data": gin.H{
 				"media_id":  media.ID,
-				"file_url":  fileURL,
+				"s3_key":    uploadResult.S3Key,
 				"file_type": fileType,
 			},
 		})
 	} else {
 		// Create new media record (minimal record, can be updated later)
 		media := models.EventMedia{
-			EventID:     uint(eventID),
-			FileURL:     fileURL,
-			FileType:    fileType,
-			CompanyName: file.Filename,
-			FirstName:   "Uploaded",
-			LastName:    "File",
+			EventID:          uint(eventID),
+			S3Key:            uploadResult.S3Key,
+			OriginalFilename: uploadResult.OriginalFilename,
+			FileType:         fileType,
+			CompanyName:      file.Filename, // Keep for backward compatibility
+			FirstName:        "Uploaded",
+			LastName:         "File",
 		}
+		// DO NOT store raw S3 URLs - all access must use presigned URLs
+		// FileURL is deprecated - leave empty to prevent raw URL usage
 
 		// Try to get a default media coverage type
 		var mediaType models.MediaCoverageType
@@ -228,10 +235,11 @@ func UploadFileHandler(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "File uploaded successfully",
 			"data": gin.H{
-				"media_id":  media.ID,
-				"file_url":  fileURL,
-				"file_type": fileType,
-				"category":  category,
+				"media_id":         media.ID,
+				"s3_key":           uploadResult.S3Key,
+				"original_filename": uploadResult.OriginalFilename,
+				"file_type":        fileType,
+				"category":         category,
 			},
 		})
 	}
@@ -256,59 +264,61 @@ func DownloadFileHandler(c *gin.Context) {
 		return
 	}
 
-	var fileURL, fileType, fileName string
+	var s3Key, fileType, originalFilename string
 
 	// Try EventMedia first
 	var eventMedia models.EventMedia
 	if err := config.DB.First(&eventMedia, mediaID).Error; err == nil {
-		fileURL = eventMedia.FileURL
+		// Prefer S3Key over FileURL (new approach)
+		if eventMedia.S3Key != "" {
+			s3Key = eventMedia.S3Key
+		} else if eventMedia.FileURL != "" {
+			// Fallback: extract S3 key from legacy FileURL
+			s3Key = services.GetS3KeyFromURL(eventMedia.FileURL)
+		}
 		fileType = eventMedia.FileType
-		fileName = eventMedia.CompanyName
+		// Prefer OriginalFilename over CompanyName
+		if eventMedia.OriginalFilename != "" {
+			originalFilename = eventMedia.OriginalFilename
+		} else {
+			originalFilename = eventMedia.CompanyName
+		}
 	} else {
 		// Try BranchMedia
 		var branchMedia models.BranchMedia
 		if err := config.DB.First(&branchMedia, mediaID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "media not found"})
-		return
+			c.JSON(http.StatusNotFound, gin.H{"error": "media not found"})
+			return
 		}
-		fileURL = branchMedia.FileURL
+		// BranchMedia doesn't have S3Key yet, extract from FileURL
+		if branchMedia.FileURL != "" {
+			s3Key = services.GetS3KeyFromURL(branchMedia.FileURL)
+		}
 		fileType = branchMedia.FileType
-		fileName = branchMedia.Name
+		originalFilename = branchMedia.Name
 	}
 
-	if fileURL == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "file URL not found for this media"})
-		return
-	}
-
-	// Extract S3 key from URL
-	s3Key := services.GetS3KeyFromURL(fileURL)
 	if s3Key == "" {
-		// If URL is already a presigned URL or direct URL, return it
-		c.JSON(http.StatusOK, gin.H{
-			"download_url": fileURL,
-			"file_type":    fileType,
-			"file_name":    fileName,
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": "S3 key not found for this media"})
 		return
 	}
 
-	// Try to get original filename from S3 metadata
-	originalFilename := services.GetOriginalFilename(c.Request.Context(), s3Key)
+	// Try to get original filename from S3 metadata if not in database
 	if originalFilename == "" {
-		// Fallback to name or generate from URL
-		originalFilename = fileName
+		originalFilename = services.GetOriginalFilename(c.Request.Context(), s3Key)
 		if originalFilename == "" {
-			// Extract filename from S3 key
+			// Final fallback: extract from S3 key
 			parts := strings.Split(s3Key, "/")
 			if len(parts) > 0 {
 				originalFilename = parts[len(parts)-1]
+			} else {
+				originalFilename = "download"
 			}
 		}
 	}
 
-	// Generate presigned URL (valid for 1 hour)
-	presignedURL, err := services.GetPresignedURL(c.Request.Context(), s3Key, time.Hour)
+	// Generate short-lived presigned URL (15 minutes for downloads)
+	presignedURL, err := services.GetPresignedURL(c.Request.Context(), s3Key, 15*time.Minute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to generate download URL",
@@ -607,22 +617,44 @@ func UploadMultipleFilesHandler(c *gin.Context) {
 
 		folder := services.GetFolderFromFileType(fileType)
 
-		// Upload to S3
-		fileURL, err := services.UploadFile(c.Request.Context(), fileData, fileHeader.Filename, contentType, folder)
+		// Upload to S3 - returns opaque S3 key and original filename
+		uploadResult, err := services.UploadFile(c.Request.Context(), fileData, fileHeader.Filename, contentType, folder)
 		if err != nil {
+			// Check if this is an AWS credential/authentication error
+			errStr := err.Error()
+			if strings.Contains(errStr, "InvalidAccessKeyId") ||
+				strings.Contains(errStr, "InvalidClientTokenId") ||
+				strings.Contains(errStr, "SignatureDoesNotMatch") ||
+				strings.Contains(errStr, "AccessDenied") ||
+				strings.Contains(errStr, "credentials") ||
+				strings.Contains(errStr, "Credential") ||
+				strings.Contains(errStr, "AWS_ACCESS_KEY_ID") ||
+				strings.Contains(errStr, "AWS_SECRET_ACCESS_KEY") {
+				// AWS credential error - return HTTP 500 immediately, do NOT continue processing
+				// Do NOT attempt DB writes if S3 upload fails
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error":   "AWS S3 authentication failed",
+					"details": fmt.Sprintf("S3 upload failed for %s: %v. Check AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)", fileHeader.Filename, err),
+				})
+				return
+			}
+			// Other S3 errors - add to errors list but continue processing other files
 			errors = append(errors, fmt.Sprintf("%s: %v", fileHeader.Filename, err))
 			continue
 		}
 
-		// Create EventMedia record
+		// Create EventMedia record - only if S3 upload succeeded
 		media := models.EventMedia{
-			EventID:     uint(eventID),
-			FileURL:     fileURL,
-			FileType:    fileType,
-			CompanyName: fileHeader.Filename,
-			FirstName:   "Uploaded",
-			LastName:    "File",
+			EventID:          uint(eventID),
+			S3Key:            uploadResult.S3Key,
+			OriginalFilename: uploadResult.OriginalFilename,
+			FileType:         fileType,
+			CompanyName:      fileHeader.Filename, // Keep for backward compatibility
+			FirstName:        "Uploaded",
+			LastName:         "File",
 		}
+		// DO NOT store raw S3 URLs - all access must use presigned URLs
+		// FileURL is deprecated - leave empty to prevent raw URL usage
 
 		// Try to get a default media coverage type
 		var mediaType models.MediaCoverageType
@@ -636,11 +668,12 @@ func UploadMultipleFilesHandler(c *gin.Context) {
 		}
 
 		results = append(results, map[string]interface{}{
-			"filename":  fileHeader.Filename,
-			"media_id":  media.ID,
-			"file_url":  fileURL,
-			"file_type": fileType,
-			"status":    "success",
+			"filename":         fileHeader.Filename,
+			"media_id":         media.ID,
+			"s3_key":           uploadResult.S3Key,
+			"original_filename": uploadResult.OriginalFilename,
+			"file_type":        fileType,
+			"status":           "success",
 		})
 	}
 
@@ -827,8 +860,8 @@ func UploadBranchFilesHandler(c *gin.Context) {
 		fileTypeFolder := services.GetFolderFromFileType(fileType)
 		folder := fmt.Sprintf("%s/%d/%s", baseFolder, branchID, fileTypeFolder)
 
-		// Upload to S3
-		fileURL, err := services.UploadFile(c.Request.Context(), fileData, fileHeader.Filename, contentType, folder)
+		// Upload to S3 - returns opaque S3 key and original filename
+		uploadResult, err := services.UploadFile(c.Request.Context(), fileData, fileHeader.Filename, contentType, folder)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", fileHeader.Filename, err))
 			continue
@@ -838,10 +871,11 @@ func UploadBranchFilesHandler(c *gin.Context) {
 		media := models.BranchMedia{
 			BranchID:      uint(branchID),
 			IsChildBranch: isChildBranch,
-			FileURL:       fileURL,
-			FileType:      fileType,
-			Name:          fileHeader.Filename,
-			Category:      category,
+			// DO NOT store raw S3 URLs - all access must use presigned URLs
+			// FileURL is deprecated - leave empty to prevent raw URL usage
+			FileType: fileType,
+			Name:     fileHeader.Filename,
+			Category: category,
 		}
 
 		if err := config.DB.Create(&media).Error; err != nil {
@@ -850,11 +884,12 @@ func UploadBranchFilesHandler(c *gin.Context) {
 		}
 
 		results = append(results, map[string]interface{}{
-			"filename":  fileHeader.Filename,
-			"media_id":  media.ID,
-			"file_url":  fileURL,
-			"file_type": fileType,
-			"status":    "success",
+			"filename":         fileHeader.Filename,
+			"media_id":          media.ID,
+			"s3_key":            uploadResult.S3Key,
+			"original_filename": uploadResult.OriginalFilename,
+			"file_type":         fileType,
+			"status":            "success",
 		})
 	}
 

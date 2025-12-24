@@ -30,8 +30,12 @@ type EventMedia struct {
 	Designation         string            `json:"designation,omitempty"`
 	Contact             string            `json:"contact,omitempty"`
 	Email               string            `json:"email,omitempty"`
-	FileURL             string            `json:"file_url,omitempty" gorm:"column:file_url"`
+	FileURL             string            `json:"-" gorm:"column:file_url"` // Internal: NEVER serialize to JSON - stores presigned URL temporarily
+	S3Key               string            `json:"s3_key,omitempty" gorm:"column:s3_key"`   // Opaque S3 object key (UUID-based)
+	OriginalFilename    string            `json:"original_filename,omitempty" gorm:"column:original_filename"` // Original filename from upload
+	ThumbnailS3Key      *string           `json:"thumbnail_s3_key,omitempty" gorm:"column:thumbnail_s3_key"` // Optional thumbnail S3 key
 	FileType            string            `json:"file_type,omitempty" gorm:"column:file_type"` // image, video, audio, file
+	URL                 string            `json:"url,omitempty" gorm:"-"` // Computed: presigned URL (populated by ConvertEventMediaToPresignedURLs)
 	CreatedOn           time.Time         `gorm:"autoCreateTime" json:"created_on"`
 	UpdatedOn           time.Time         `gorm:"autoUpdateTime" json:"updated_on"`
 	CreatedBy           string            `json:"created_by,omitempty" gorm:"<-:create"` // only set on create

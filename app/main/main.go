@@ -27,6 +27,7 @@ import (
 
 	"github.com/followCode/djjs-event-reporting-backend/app/api"
 	"github.com/followCode/djjs-event-reporting-backend/app/middleware"
+	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
 	"github.com/followCode/djjs-event-reporting-backend/config"
 	"github.com/followCode/djjs-event-reporting-backend/docs"
@@ -87,6 +88,9 @@ func main() {
 	if err := services.InitializeS3(); err != nil {
 		log.Printf("Warning: Failed to initialize S3: %v", err)
 	}
+
+	// 3️⃣b Startup invariant check: verify no legacy records with NULL s3_key
+	checkLegacyRecords()
 
 	// 4️⃣ Create Gin router
 	r := gin.New()
@@ -227,6 +231,43 @@ func main() {
 	log.Printf("Server starting on port %s...", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
+	}
+}
+
+// checkLegacyRecords performs startup invariant check for NULL s3_key records
+// Logs ERROR and WARN loudly if legacy records exist
+func checkLegacyRecords() {
+	var eventMediaCount int64
+	var branchMediaCount int64
+
+	// Count EventMedia records with NULL s3_key
+	if err := config.DB.Model(&models.EventMedia{}).
+		Where("s3_key IS NULL OR s3_key = ''").
+		Count(&eventMediaCount).Error; err != nil {
+		log.Printf("WARNING: Failed to check event_media for NULL s3_key: %v", err)
+	} else if eventMediaCount > 0 {
+		log.Printf("═══════════════════════════════════════════════════════════════")
+		log.Printf("ERROR: Found %d EventMedia records with NULL or empty s3_key", eventMediaCount)
+		log.Printf("ERROR: These records will cause HTTP 500 errors when accessed")
+		log.Printf("ERROR: Run migration: init/migrations/backfill_s3_key_from_file_url.sql")
+		log.Printf("═══════════════════════════════════════════════════════════════")
+	}
+
+	// Count BranchMedia records with NULL s3_key
+	if err := config.DB.Model(&models.BranchMedia{}).
+		Where("s3_key IS NULL OR s3_key = ''").
+		Count(&branchMediaCount).Error; err != nil {
+		log.Printf("WARNING: Failed to check branch_media for NULL s3_key: %v", err)
+	} else if branchMediaCount > 0 {
+		log.Printf("═══════════════════════════════════════════════════════════════")
+		log.Printf("ERROR: Found %d BranchMedia records with NULL or empty s3_key", branchMediaCount)
+		log.Printf("ERROR: These records will cause HTTP 500 errors when accessed")
+		log.Printf("ERROR: Run migration: init/migrations/add_branch_media_fields.sql")
+		log.Printf("═══════════════════════════════════════════════════════════════")
+	}
+
+	if eventMediaCount == 0 && branchMediaCount == 0 {
+		log.Println("✓ Startup check passed: All media records have s3_key populated")
 	}
 }
 
