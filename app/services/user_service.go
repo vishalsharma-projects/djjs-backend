@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
+	"github.com/followCode/djjs-event-reporting-backend/app/services/auth"
 	"github.com/followCode/djjs-event-reporting-backend/config"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -22,19 +22,17 @@ func generateRandomPassword() string {
 	return string(b)
 }
 
-// HashPassword hashes a password using bcrypt
+// HashPassword hashes a password using Argon2id (same as auth service)
+// This ensures compatibility with the login system
 func HashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedPassword), nil
+	return auth.HashPassword(password)
 }
 
 // VerifyPassword verifies a plain password against a hashed password
+// Uses Argon2id (same as auth service) for compatibility
 func VerifyPassword(hashedPassword, plainPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plainPassword))
-	return err == nil
+	valid, err := auth.VerifyPassword(plainPassword, hashedPassword)
+	return err == nil && valid
 }
 
 // CreateUser inserts a new user record
@@ -59,11 +57,20 @@ func CreateUser(user *models.User) error {
 
 	user.Password = hashedPassword
 	user.CreatedOn = time.Now()
-	user.UpdatedOn = nil
+	now := time.Now()
+	user.UpdatedOn = &now
 
+	// Create user record using GORM
 	if err := config.DB.Create(user).Error; err != nil {
 		return err
 	}
+
+	// Set email_verified_at for auth system compatibility
+	// Admin-created users should be automatically verified so they can login immediately
+	// Use raw SQL to update email_verified_at (this column might not be in the GORM model)
+	config.DB.Exec(`
+		UPDATE users SET email_verified_at = NOW() WHERE id = ? AND (email_verified_at IS NULL OR email_verified_at = '1970-01-01'::timestamp)
+	`, user.ID)
 
 	// Return the plain password to the caller for display
 	user.Password = plainPassword
