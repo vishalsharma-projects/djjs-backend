@@ -265,10 +265,6 @@ definitions:
         items:
           $ref: '#/definitions/models.BranchMember'
         type: array
-      child_branches:
-        items:
-          $ref: '#/definitions/models.ChildBranch'
-        type: array
       children:
         items:
           $ref: '#/definitions/models.Branch'
@@ -428,178 +424,6 @@ definitions:
     - member_type
     - name
     type: object
-  models.ChildBranch:
-    properties:
-      aashram_area:
-        minimum: 0
-        type: number
-      address:
-        maxLength: 500
-        type: string
-      branch_code:
-        maxLength: 50
-        type: string
-      city:
-        $ref: '#/definitions/models.City'
-      city_id:
-        minimum: 1
-        type: integer
-      contact_number:
-        maxLength: 20
-        type: string
-      coordinator_name:
-        maxLength: 255
-        minLength: 2
-        type: string
-      country:
-        $ref: '#/definitions/models.Country'
-      country_id:
-        minimum: 1
-        type: integer
-      created_by:
-        type: string
-      created_on:
-        type: string
-      daily_end_time:
-        type: string
-      daily_start_time:
-        type: string
-      district:
-        $ref: '#/definitions/models.District'
-      district_id:
-        minimum: 1
-        type: integer
-      email:
-        maxLength: 255
-        type: string
-      established_on:
-        type: string
-      id:
-        type: integer
-      infrastructure:
-        items:
-          $ref: '#/definitions/models.ChildBranchInfrastructure'
-        type: array
-      members:
-        items:
-          $ref: '#/definitions/models.ChildBranchMember'
-        type: array
-      name:
-        maxLength: 255
-        minLength: 2
-        type: string
-      ncr:
-        type: boolean
-      open_days:
-        maxLength: 100
-        type: string
-      parent_branch:
-        $ref: '#/definitions/models.Branch'
-      parent_branch_id:
-        minimum: 1
-        type: integer
-      pincode:
-        type: string
-      police_station:
-        maxLength: 100
-        type: string
-      post_office:
-        maxLength: 100
-        type: string
-      region_id:
-        type: integer
-      state:
-        $ref: '#/definitions/models.State'
-      state_id:
-        minimum: 1
-        type: integer
-      status:
-        type: boolean
-      updated_by:
-        type: string
-      updated_on:
-        type: string
-    required:
-    - contact_number
-    - name
-    - parent_branch_id
-    type: object
-  models.ChildBranchInfrastructure:
-    properties:
-      child_branch:
-        $ref: '#/definitions/models.ChildBranch'
-      child_branch_id:
-        minimum: 1
-        type: integer
-      count:
-        minimum: 0
-        type: integer
-      created_by:
-        type: string
-      created_on:
-        type: string
-      id:
-        type: integer
-      type:
-        maxLength: 100
-        minLength: 2
-        type: string
-      updated_by:
-        type: string
-      updated_on:
-        type: string
-    required:
-    - child_branch_id
-    - count
-    - type
-    type: object
-  models.ChildBranchMember:
-    properties:
-      age:
-        maximum: 150
-        minimum: 0
-        type: integer
-      branch_role:
-        maxLength: 100
-        type: string
-      child_branch:
-        $ref: '#/definitions/models.ChildBranch'
-      child_branch_id:
-        minimum: 1
-        type: integer
-      created_by:
-        type: string
-      created_on:
-        type: string
-      date_of_birth:
-        type: string
-      date_of_samarpan:
-        type: string
-      id:
-        type: integer
-      member_type:
-        maxLength: 100
-        minLength: 2
-        type: string
-      name:
-        maxLength: 255
-        minLength: 2
-        type: string
-      qualification:
-        maxLength: 255
-        type: string
-      responsibility:
-        maxLength: 500
-        type: string
-      updated_by:
-        type: string
-      updated_on:
-        type: string
-    required:
-    - child_branch_id
-    - member_type
-    - name
-    type: object
   models.City:
     properties:
       id:
@@ -698,6 +522,11 @@ definitions:
         type: integer
       beneficiary_women:
         type: integer
+      branch:
+        $ref: '#/definitions/models.Branch'
+      branch_id:
+        description: Branch association (nullable - optional field for backward compatibility)
+        type: integer
       city:
         type: string
       country:
@@ -730,6 +559,8 @@ definitions:
         type: integer
       initiation_women:
         type: integer
+      language:
+        type: string
       pincode:
         type: string
       post_office:
@@ -777,8 +608,6 @@ definitions:
       file_type:
         description: image, video, audio, file
         type: string
-      file_url:
-        type: string
       first_name:
         type: string
       gender:
@@ -793,11 +622,23 @@ definitions:
         type: integer
       middle_name:
         type: string
+      original_filename:
+        description: Original filename from upload
+        type: string
       prefix:
+        type: string
+      s3_key:
+        description: Opaque S3 object key (UUID-based)
+        type: string
+      thumbnail_s3_key:
+        description: Optional thumbnail S3 key
         type: string
       updated_by:
         type: string
       updated_on:
+        type: string
+      url:
+        description: 'Computed: presigned URL (populated by ConvertEventMediaToPresignedURLs)'
         type: string
     type: object
   models.EventSubCategory:
@@ -976,6 +817,17 @@ definitions:
       id:
         type: integer
       name:
+        type: string
+    type: object
+  models.Theme:
+    properties:
+      created_on:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_on:
         type: string
     type: object
   models.TimeOnly:
@@ -1800,17 +1652,14 @@ paths:
       - BranchMedia
   /api/branch-media/branch/{branch_id}:
     get:
-      description: Get all Branch Media records for a specific Branch ID
+      description: Get all Branch Media records for a specific Branch ID (works for
+        both branches and child branches)
       parameters:
       - description: Branch ID
         in: path
         name: branch_id
         required: true
         type: integer
-      - description: 'Whether this is a child branch (default: false)'
-        in: query
-        name: is_child_branch
-        type: boolean
       produces:
       - application/json
       responses:
@@ -2005,6 +1854,47 @@ paths:
       summary: Get members of a branch
       tags:
       - BranchMember
+  /api/branch-member/export:
+    get:
+      description: Export branch members to Excel file filtered by search, member_type,
+        and branch_type (optional)
+      parameters:
+      - description: Search term (searches in name, role, responsibility, branch name)
+        in: query
+        name: search
+        type: string
+      - description: Member type filter (preacher/samarpit)
+        in: query
+        name: member_type
+        type: string
+      - description: Branch type filter (branch/child_branch)
+        in: query
+        name: branch_type
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export branch members to Excel
+      tags:
+      - BranchMember
   /api/branches:
     get:
       description: Retrieve all branches with their related data (country, state,
@@ -2176,6 +2066,38 @@ paths:
       summary: Update a branch
       tags:
       - Branches
+  /api/branches/export:
+    get:
+      description: Export branches to Excel file filtered by search term (optional)
+      parameters:
+      - description: Search term (searches in name, coordinator, city, state)
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export branches to Excel
+      tags:
+      - Branches
   /api/branches/parent/{parent_id}/children:
     get:
       description: Retrieve all child branches of a specific parent branch
@@ -2246,7 +2168,8 @@ paths:
       - Branches
   /api/child-branches:
     get:
-      description: Retrieve all child branches with their details
+      description: Retrieve all child branches with their details (branches with parent_branch_id
+        set)
       produces:
       - application/json
       responses:
@@ -2254,7 +2177,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.ChildBranch'
+              $ref: '#/definitions/models.Branch'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2264,21 +2187,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new child branch with all its details
+      description: Create a new child branch with all its details (now using Branch
+        model with parent_branch_id)
       parameters:
       - description: Child Branch Data
         in: body
         name: childBranch
         required: true
         schema:
-          $ref: '#/definitions/models.ChildBranch'
+          $ref: '#/definitions/models.Branch'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.ChildBranch'
+            $ref: '#/definitions/models.Branch'
         "400":
           description: Bad Request
           schema:
@@ -2326,7 +2250,8 @@ paths:
       tags:
       - Child Branches
     get:
-      description: Retrieve a specific child branch by its ID
+      description: Retrieve a specific child branch by its ID (branch with parent_branch_id
+        set)
       parameters:
       - description: Child Branch ID
         in: path
@@ -2339,7 +2264,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ChildBranch'
+            $ref: '#/definitions/models.Branch'
         "404":
           description: Not Found
           schema:
@@ -2374,7 +2299,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ChildBranch'
+            $ref: '#/definitions/models.Branch'
         "400":
           description: Bad Request
           schema:
@@ -2394,7 +2319,8 @@ paths:
       - Child Branches
   /api/child-branches/{id}/infrastructure:
     get:
-      description: Get all infrastructure records for a child branch
+      description: Get all infrastructure records for a child branch (now using BranchInfrastructure
+        model)
       parameters:
       - description: Child Branch ID
         in: path
@@ -2408,7 +2334,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.ChildBranchInfrastructure'
+              $ref: '#/definitions/models.BranchInfrastructure'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2418,21 +2344,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create infrastructure record for a child branch
+      description: Create infrastructure record for a child branch (now using BranchInfrastructure
+        model)
       parameters:
       - description: Infrastructure Data
         in: body
         name: infrastructure
         required: true
         schema:
-          $ref: '#/definitions/models.ChildBranchInfrastructure'
+          $ref: '#/definitions/models.BranchInfrastructure'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.ChildBranchInfrastructure'
+            $ref: '#/definitions/models.BranchInfrastructure'
         "400":
           description: Bad Request
           schema:
@@ -2446,7 +2373,7 @@ paths:
       - Child Branch Infrastructure
   /api/child-branches/{id}/members:
     get:
-      description: Get all members of a child branch
+      description: Get all members of a child branch (now using BranchMember model)
       parameters:
       - description: Child Branch ID
         in: path
@@ -2460,7 +2387,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.ChildBranchMember'
+              $ref: '#/definitions/models.BranchMember'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2470,21 +2397,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a member record for a child branch
+      description: Create a member record for a child branch (now using BranchMember
+        model)
       parameters:
       - description: Member Data
         in: body
         name: member
         required: true
         schema:
-          $ref: '#/definitions/models.ChildBranchMember'
+          $ref: '#/definitions/models.BranchMember'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.ChildBranchMember'
+            $ref: '#/definitions/models.BranchMember'
         "400":
           description: Bad Request
           schema:
@@ -2512,7 +2440,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.ChildBranch'
+              $ref: '#/definitions/models.Branch'
             type: array
         "400":
           description: Bad Request
@@ -3001,12 +2929,25 @@ paths:
       - EventMedia
   /api/event-media/event/{event_id}:
     get:
-      description: Get all Event Media records for a specific Event ID
+      description: Get Event Media records for a specific Event ID with optional cursor-based
+        pagination
       parameters:
       - description: Event ID
         in: path
         name: event_id
         required: true
+        type: integer
+      - description: 'Number of items per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Cursor: created_at timestamp (RFC3339)'
+        in: query
+        name: cursor_created_at
+        type: string
+      - description: 'Cursor: media ID'
+        in: query
+        name: cursor_id
         type: integer
       produces:
       - application/json
@@ -3331,8 +3272,7 @@ paths:
       - Donations
   /api/events/{event_id}/download:
     get:
-      description: Downloads event data in a downloadable format (JSON for now, PDF
-        can be added later)
+      description: Downloads event data as a PDF document
       parameters:
       - description: Event ID
         in: path
@@ -3340,10 +3280,10 @@ paths:
         required: true
         type: integer
       produces:
-      - application/json
+      - application/pdf
       responses:
         "200":
-          description: Event data file
+          description: Event data PDF file
           schema:
             type: file
         "400":
@@ -3366,9 +3306,41 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Download event data as PDF/JSON
+      summary: Download event data as PDF
       tags:
       - Events
+  /api/events/{event_id}/media/export:
+    get:
+      parameters:
+      - description: Event ID
+        in: path
+        name: event_id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export event media by event ID to Excel
+      tags:
+      - EventMedia
   /api/events/{event_id}/specialguests:
     get:
       parameters:
@@ -3399,6 +3371,38 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get special guest by event ID
+      tags:
+      - SpecialGuests
+  /api/events/{event_id}/specialguests/export:
+    get:
+      parameters:
+      - description: Event ID
+        in: path
+        name: event_id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export special guests by event ID to Excel
       tags:
       - SpecialGuests
   /api/events/{event_id}/status:
@@ -3486,6 +3490,38 @@ paths:
       summary: Get volunteers by event ID
       tags:
       - Volunteers
+  /api/events/{event_id}/volunteers/export:
+    get:
+      parameters:
+      - description: Event ID
+        in: path
+        name: event_id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export volunteers by event ID to Excel
+      tags:
+      - Volunteers
   /api/events/draft:
     post:
       consumes:
@@ -3511,7 +3547,7 @@ paths:
             type: object
         "400":
           description: 'Bad Request" example({"error":"Invalid step name. Must be
-            one of: generalDetails, mediaPromotion, specialGuests, volunteers"})'
+            one of: generalDetails, mediaPromotion, specialGuests, volunteers, donations"})'
           schema:
             additionalProperties:
               type: string
@@ -3530,8 +3566,8 @@ paths:
   /api/events/draft/{draftId}:
     get:
       description: Retrieves draft data for event creation. Returns all draft steps
-        (generalDetails, mediaPromotion, specialGuests, volunteers) stored in the
-        event_drafts table.
+        (generalDetails, mediaPromotion, specialGuests, volunteers, donations) stored
+        in the event_drafts table.
       parameters:
       - description: Draft ID
         in: path
@@ -3542,7 +3578,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Draft data" example({"draftId":1,"generalDetails":{},"mediaPromotion":{},"specialGuests":{},"volunteers":{}})
+          description: Draft data" example({"draftId":1,"generalDetails":{},"mediaPromotion":{},"specialGuests":{},"volunteers":{},"donations":{}})
           schema:
             additionalProperties: true
             type: object
@@ -3578,7 +3614,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Draft data" example({"draftId":1,"generalDetails":{},"mediaPromotion":{},"specialGuests":{},"volunteers":{}})
+          description: Draft data" example({"draftId":1,"generalDetails":{},"mediaPromotion":{},"specialGuests":{},"volunteers":{},"donations":{}})
           schema:
             additionalProperties: true
             type: object
@@ -3598,6 +3634,46 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get latest draft for current user
+      tags:
+      - Events
+  /api/events/export:
+    get:
+      description: Export events to Excel file filtered by date range (optional)
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Status filter (complete/incomplete)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Export events to Excel
       tags:
       - Events
   /api/events/search:
@@ -3770,7 +3846,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Upload multiple image, video, audio, or PDF files to S3 and associate
-        with branch media
+        with branch media (works for both branches and child branches)
       parameters:
       - description: Files to upload (multiple files allowed)
         in: formData
@@ -3782,10 +3858,6 @@ paths:
         name: branch_id
         required: true
         type: integer
-      - description: 'Whether this is a child branch (default: false)'
-        in: formData
-        name: is_child_branch
-        type: boolean
       - description: File category (Branch Photos, Video Coverage, Documents, Other)
         in: formData
         name: category
@@ -3862,6 +3934,20 @@ paths:
       summary: Upload multiple files to S3
       tags:
       - Files
+  /api/health:
+    get:
+      description: Returns the health status of the API and S3 bucket connectivity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health status
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
   /api/languages:
     get:
       description: Returns a list of all languages
@@ -4304,6 +4390,29 @@ paths:
       summary: Get all states
       tags:
       - Location
+  /api/themes:
+    get:
+      description: Returns a list of all themes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Theme'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all themes
+      tags:
+      - Themes
   /api/users:
     get:
       produces:
@@ -4732,6 +4841,54 @@ paths:
       summary: Update a volunteer
       tags:
       - Volunteers
+  /api/volunteers/search:
+    get:
+      parameters:
+      - description: Search term (name or contact)
+        in: query
+        name: search
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Volunteer'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Search volunteers
+      tags:
+      - Volunteers
+  /health:
+    get:
+      description: Returns the health status of the API and S3 bucket connectivity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health status
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
 securityDefinitions:
   ApiKeyAuth:
     in: header

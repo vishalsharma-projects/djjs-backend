@@ -13,9 +13,10 @@ func SetupBranchRoutes(r *gin.RouterGroup) {
 	{
 		branches.POST("", handlers.CreateBranchHandler)
 		branches.GET("", handlers.GetAllBranchesHandler)
-		branches.GET("/:id", handlers.GetBranchHandler)
 		branches.GET("/search", handlers.GetBranchSearchHandler)
+		branches.GET("/export", handlers.ExportBranchesHandler) // Must be before /:id route
 		branches.GET("/parent/:parent_id/children", handlers.GetChildBranchesHandler)
+		branches.GET("/:id", handlers.GetBranchHandler)
 		branches.PUT("/:id", handlers.UpdateBranchHandler)
 		branches.DELETE("/:id", handlers.DeleteBranchHandler)
 	}
@@ -37,6 +38,7 @@ func SetupBranchRoutes(r *gin.RouterGroup) {
 	{
 		branchMember.POST("", handlers.CreateBranchMemberHandler)
 		branchMember.GET("", handlers.GetAllBranchMembersHandler)
+		branchMember.GET("/export", handlers.ExportMembersHandler) // Must be before /:id route
 		branchMember.GET("/branch/:branch_id", handlers.GetMembersByBranchHandler)
 		branchMember.PUT("/:id", handlers.UpdateBranchMemberHandler)
 		branchMember.DELETE("/:id", handlers.DeleteBranchMemberHandler)

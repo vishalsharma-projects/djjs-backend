@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -166,6 +167,53 @@ func GetEventMediaByEventIDHandler(c *gin.Context) {
 		"next_cursor": paginatedResult.NextCursor,
 		"has_more":   paginatedResult.HasMore,
 	})
+}
+
+// ExportEventMediaByEventIDHandler exports event media to Excel
+// @Summary Export event media by event ID to Excel
+// @Tags EventMedia
+// @Security ApiKeyAuth
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param event_id path int true "Event ID"
+// @Success 200 {file} file "Excel file"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/events/{event_id}/media/export [get]
+func ExportEventMediaByEventIDHandler(c *gin.Context) {
+	eventIDParam := c.Param("event_id")
+	eventID, err := strconv.ParseUint(eventIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid event ID"})
+		return
+	}
+
+	mediaList, err := services.GetEventMediaByEventID(uint(eventID))
+	if err != nil {
+		// Return empty array if not found
+		mediaList = []models.EventMedia{}
+	}
+
+	// Get event name for filename
+	event, err := services.GetEventByID(uint(eventID))
+	eventName := "Event"
+	if err == nil && event.Theme != "" {
+		eventName = event.Theme
+	}
+
+	// Export to Excel
+	excelBuffer, err := services.ExportEventMediaToExcel(mediaList, eventName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate Excel file: " + err.Error()})
+		return
+	}
+
+	filename := fmt.Sprintf("event_media_event_%d_%s.xlsx", eventID, time.Now().Format("20060102"))
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", excelBuffer.Len()))
+
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBuffer.Bytes())
 }
 
 // UpdateEventMediaHandler updates an existing EventMedia record

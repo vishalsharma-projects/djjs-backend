@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -1135,6 +1136,117 @@ func UpdateBranchMemberHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Branch member updated successfully"})
+}
+
+// ExportBranchesHandler godoc
+// @Summary Export branches to Excel
+// @Description Export branches to Excel file filtered by search term (optional)
+// @Tags Branches
+// @Security ApiKeyAuth
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param search query string false "Search term (searches in name, coordinator, city, state)"
+// @Success 200 {file} file "Excel file"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/branches/export [get]
+func ExportBranchesHandler(c *gin.Context) {
+	search := c.Query("search")
+
+	var branches []models.Branch
+	var err error
+
+	if search != "" && strings.TrimSpace(search) != "" {
+		// Use search function with search term
+		// Split search term to search in both name and coordinator
+		branches, err = services.GetBranchSearch(search, search)
+	} else {
+		// Get all branches
+		branches, err = services.GetAllBranches()
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch branches: " + err.Error()})
+		return
+	}
+
+	// Export to Excel
+	excelBuffer, err := services.ExportBranchesToExcel(branches)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate Excel file: " + err.Error()})
+		return
+	}
+
+	// Generate filename
+	filename := "branches_export"
+	if search != "" && strings.TrimSpace(search) != "" {
+		// Sanitize search term for filename
+		sanitized := strings.ReplaceAll(strings.TrimSpace(search), " ", "_")
+		filename = fmt.Sprintf("branches_%s", sanitized)
+	}
+	filename += ".xlsx"
+
+	// Set response headers
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", excelBuffer.Len()))
+
+	// Write Excel buffer to response
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBuffer.Bytes())
+}
+
+// ExportMembersHandler godoc
+// @Summary Export branch members to Excel
+// @Description Export branch members to Excel file filtered by search, member_type, and branch_type (optional)
+// @Tags BranchMember
+// @Security ApiKeyAuth
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param search query string false "Search term (searches in name, role, responsibility, branch name)"
+// @Param member_type query string false "Member type filter (preacher/samarpit)"
+// @Param branch_type query string false "Branch type filter (branch/child_branch)"
+// @Success 200 {file} file "Excel file"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/branch-member/export [get]
+func ExportMembersHandler(c *gin.Context) {
+	search := c.Query("search")
+	memberType := c.Query("member_type")
+	branchType := c.Query("branch_type")
+
+	// Get members with filters
+	members, err := services.GetBranchMembersWithFilters(search, memberType, branchType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch members: " + err.Error()})
+		return
+	}
+
+	// Export to Excel
+	excelBuffer, err := services.ExportMembersToExcel(members)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate Excel file: " + err.Error()})
+		return
+	}
+
+	// Generate filename
+	filename := "members_export"
+	if search != "" && strings.TrimSpace(search) != "" {
+		sanitized := strings.ReplaceAll(strings.TrimSpace(search), " ", "_")
+		filename = fmt.Sprintf("members_%s", sanitized)
+	}
+	if memberType != "" && memberType != "all" {
+		filename += "_" + memberType
+	}
+	if branchType != "" && branchType != "all" {
+		filename += "_" + branchType
+	}
+	filename += ".xlsx"
+
+	// Set response headers
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", excelBuffer.Len()))
+
+	// Write Excel buffer to response
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBuffer.Bytes())
 }
 
 // DeleteBranchMemberHandler godoc

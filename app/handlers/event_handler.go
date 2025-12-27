@@ -1030,3 +1030,91 @@ func parseEventFromMap(data map[string]interface{}, event *models.EventDetails) 
 
 	return nil
 }
+
+// ----------------------------------------------------
+// Export Events to Excel
+// ----------------------------------------------------
+
+// ExportEventsHandler godoc
+// @Summary Export events to Excel
+// @Description Export events to Excel file filtered by date range (optional)
+// @Tags Events
+// @Security ApiKeyAuth
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Param status query string false "Status filter (complete/incomplete)"
+// @Success 200 {file} file "Excel file"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/events/export [get]
+func ExportEventsHandler(c *gin.Context) {
+	// Parse query parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	statusFilter := c.Query("status")
+
+	var startDate *time.Time
+	var endDate *time.Time
+
+	// Parse start date
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			return
+		}
+		// Set end date to end of day
+		endOfDay := time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 23, 59, 59, 999999999, parsed.Location())
+		endDate = &endOfDay
+	}
+
+	// Validate date range
+	if startDate != nil && endDate != nil && startDate.After(*endDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start_date must be before or equal to end_date"})
+		return
+	}
+
+	// Get events by date range
+	events, err := services.GetEventsByDateRange(startDate, endDate, statusFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events: " + err.Error()})
+		return
+	}
+
+	// Export to Excel
+	excelBuffer, err := services.ExportEventsToExcel(events)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate Excel file: " + err.Error()})
+		return
+	}
+
+	// Generate filename with date range
+	filename := "events_export"
+	if startDate != nil && endDate != nil {
+		filename = fmt.Sprintf("events_%s_to_%s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	} else if startDate != nil {
+		filename = fmt.Sprintf("events_from_%s", startDate.Format("2006-01-02"))
+	} else if endDate != nil {
+		filename = fmt.Sprintf("events_until_%s", endDate.Format("2006-01-02"))
+	}
+	filename += ".xlsx"
+
+	// Set response headers
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", excelBuffer.Len()))
+
+	// Write Excel buffer to response
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBuffer.Bytes())
+}

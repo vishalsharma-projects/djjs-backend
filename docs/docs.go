@@ -1132,7 +1132,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get all Branch Media records for a specific Branch ID",
+                "description": "Get all Branch Media records for a specific Branch ID (works for both branches and child branches)",
                 "produces": [
                     "application/json"
                 ],
@@ -1147,12 +1147,6 @@ const docTemplate = `{
                         "name": "branch_id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Whether this is a child branch (default: false)",
-                        "name": "is_child_branch",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1313,6 +1307,69 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/branch-member/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Export branch members to Excel file filtered by search, member_type, and branch_type (optional)",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "BranchMember"
+                ],
+                "summary": "Export branch members to Excel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (searches in name, role, responsibility, branch name)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member type filter (preacher/samarpit)",
+                        "name": "member_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch type filter (branch/child_branch)",
+                        "name": "branch_type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1514,6 +1571,57 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/branches/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Export branches to Excel file filtered by search term (optional)",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Export branches to Excel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (searches in name, coordinator, city, state)",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
                         }
                     },
                     "400": {
@@ -1818,7 +1926,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve all child branches with their details",
+                "description": "Retrieve all child branches with their details (branches with parent_branch_id set)",
                 "produces": [
                     "application/json"
                 ],
@@ -1832,7 +1940,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.ChildBranch"
+                                "$ref": "#/definitions/models.Branch"
                             }
                         }
                     }
@@ -1844,7 +1952,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Create a new child branch with all its details",
+                "description": "Create a new child branch with all its details (now using Branch model with parent_branch_id)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1862,7 +1970,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranch"
+                            "$ref": "#/definitions/models.Branch"
                         }
                     }
                 ],
@@ -1870,7 +1978,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranch"
+                            "$ref": "#/definitions/models.Branch"
                         }
                     },
                     "400": {
@@ -1915,7 +2023,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.ChildBranch"
+                                "$ref": "#/definitions/models.Branch"
                             }
                         }
                     },
@@ -1938,7 +2046,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a specific child branch by its ID",
+                "description": "Retrieve a specific child branch by its ID (branch with parent_branch_id set)",
                 "produces": [
                     "application/json"
                 ],
@@ -1959,7 +2067,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranch"
+                            "$ref": "#/definitions/models.Branch"
                         }
                     },
                     "404": {
@@ -2013,7 +2121,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranch"
+                            "$ref": "#/definitions/models.Branch"
                         }
                     },
                     "400": {
@@ -2097,7 +2205,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get all infrastructure records for a child branch",
+                "description": "Get all infrastructure records for a child branch (now using BranchInfrastructure model)",
                 "produces": [
                     "application/json"
                 ],
@@ -2120,7 +2228,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.ChildBranchInfrastructure"
+                                "$ref": "#/definitions/models.BranchInfrastructure"
                             }
                         }
                     }
@@ -2132,7 +2240,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Create infrastructure record for a child branch",
+                "description": "Create infrastructure record for a child branch (now using BranchInfrastructure model)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2150,7 +2258,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranchInfrastructure"
+                            "$ref": "#/definitions/models.BranchInfrastructure"
                         }
                     }
                 ],
@@ -2158,7 +2266,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranchInfrastructure"
+                            "$ref": "#/definitions/models.BranchInfrastructure"
                         }
                     },
                     "400": {
@@ -2180,7 +2288,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get all members of a child branch",
+                "description": "Get all members of a child branch (now using BranchMember model)",
                 "produces": [
                     "application/json"
                 ],
@@ -2203,7 +2311,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.ChildBranchMember"
+                                "$ref": "#/definitions/models.BranchMember"
                             }
                         }
                     }
@@ -2215,7 +2323,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Create a member record for a child branch",
+                "description": "Create a member record for a child branch (now using BranchMember model)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2233,7 +2341,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranchMember"
+                            "$ref": "#/definitions/models.BranchMember"
                         }
                     }
                 ],
@@ -2241,7 +2349,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.ChildBranchMember"
+                            "$ref": "#/definitions/models.BranchMember"
                         }
                     },
                     "400": {
@@ -2892,7 +3000,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get all Event Media records for a specific Event ID",
+                "description": "Get Event Media records for a specific Event ID with optional cursor-based pagination",
                 "produces": [
                     "application/json"
                 ],
@@ -2907,6 +3015,24 @@ const docTemplate = `{
                         "name": "event_id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items per page (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor: created_at timestamp (RFC3339)",
+                        "name": "cursor_created_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cursor: media ID",
+                        "name": "cursor_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3315,7 +3441,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request\" example({\"error\":\"Invalid step name. Must be one of: generalDetails, mediaPromotion, specialGuests, volunteers\"})",
+                        "description": "Bad Request\" example({\"error\":\"Invalid step name. Must be one of: generalDetails, mediaPromotion, specialGuests, volunteers, donations\"})",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3352,7 +3478,7 @@ const docTemplate = `{
                 "summary": "Get latest draft for current user",
                 "responses": {
                     "200": {
-                        "description": "Draft data\" example({\"draftId\":1,\"generalDetails\":{},\"mediaPromotion\":{},\"specialGuests\":{},\"volunteers\":{}})",
+                        "description": "Draft data\" example({\"draftId\":1,\"generalDetails\":{},\"mediaPromotion\":{},\"specialGuests\":{},\"volunteers\":{},\"donations\":{}})",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -3386,7 +3512,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieves draft data for event creation. Returns all draft steps (generalDetails, mediaPromotion, specialGuests, volunteers) stored in the event_drafts table.",
+                "description": "Retrieves draft data for event creation. Returns all draft steps (generalDetails, mediaPromotion, specialGuests, volunteers, donations) stored in the event_drafts table.",
                 "produces": [
                     "application/json"
                 ],
@@ -3405,7 +3531,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Draft data\" example({\"draftId\":1,\"generalDetails\":{},\"mediaPromotion\":{},\"specialGuests\":{},\"volunteers\":{}})",
+                        "description": "Draft data\" example({\"draftId\":1,\"generalDetails\":{},\"mediaPromotion\":{},\"specialGuests\":{},\"volunteers\":{},\"donations\":{}})",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -3431,6 +3557,69 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error\" example({\"error\":\"Failed to retrieve draft\"})",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Export events to Excel file filtered by date range (optional)",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Export events to Excel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter (complete/incomplete)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3727,14 +3916,14 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Downloads event data in a downloadable format (JSON for now, PDF can be added later)",
+                "description": "Downloads event data as a PDF document",
                 "produces": [
-                    "application/json"
+                    "application/pdf"
                 ],
                 "tags": [
                     "Events"
                 ],
-                "summary": "Download event data as PDF/JSON",
+                "summary": "Download event data as PDF",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3746,7 +3935,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Event data file",
+                        "description": "Event data PDF file",
                         "schema": {
                             "type": "file"
                         }
@@ -3762,6 +3951,57 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/{event_id}/media/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "EventMedia"
+                ],
+                "summary": "Export event media by event ID to Excel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Event ID",
+                        "name": "event_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3822,6 +4062,57 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/{event_id}/specialguests/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "SpecialGuests"
+                ],
+                "summary": "Export special guests by event ID to Excel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Event ID",
+                        "name": "event_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3960,6 +4251,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/events/{event_id}/volunteers/export": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "Volunteers"
+                ],
+                "summary": "Export volunteers by event ID to Excel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Event ID",
+                        "name": "event_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/files/upload": {
             "post": {
                 "security": [
@@ -4042,7 +4384,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Upload multiple image, video, audio, or PDF files to S3 and associate with branch media",
+                "description": "Upload multiple image, video, audio, or PDF files to S3 and associate with branch media (works for both branches and child branches)",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -4067,12 +4409,6 @@ const docTemplate = `{
                         "name": "branch_id",
                         "in": "formData",
                         "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Whether this is a child branch (default: false)",
-                        "name": "is_child_branch",
-                        "in": "formData"
                     },
                     {
                         "type": "string",
@@ -4306,6 +4642,27 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/health": {
+            "get": {
+                "description": "Returns the health status of the API and S3 bucket connectivity",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Health status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -5006,6 +5363,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/themes": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a list of all themes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Themes"
+                ],
+                "summary": "Get all themes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Theme"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "get": {
                 "security": [
@@ -5549,6 +5943,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/volunteers/search": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Volunteers"
+                ],
+                "summary": "Search volunteers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (name or contact)",
+                        "name": "search",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Volunteer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/volunteers/{id}": {
             "put": {
                 "security": [
@@ -5672,6 +6120,27 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns the health status of the API and S3 bucket connectivity",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Health status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6080,12 +6549,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.BranchMember"
                     }
                 },
-                "child_branches": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ChildBranch"
-                    }
-                },
                 "children": {
                     "type": "array",
                     "items": {
@@ -6306,247 +6769,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.ChildBranch": {
-            "type": "object",
-            "required": [
-                "contact_number",
-                "name",
-                "parent_branch_id"
-            ],
-            "properties": {
-                "aashram_area": {
-                    "type": "number",
-                    "minimum": 0
-                },
-                "address": {
-                    "type": "string",
-                    "maxLength": 500
-                },
-                "branch_code": {
-                    "type": "string",
-                    "maxLength": 50
-                },
-                "city": {
-                    "$ref": "#/definitions/models.City"
-                },
-                "city_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "contact_number": {
-                    "type": "string",
-                    "maxLength": 20
-                },
-                "coordinator_name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 2
-                },
-                "country": {
-                    "$ref": "#/definitions/models.Country"
-                },
-                "country_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "created_by": {
-                    "type": "string"
-                },
-                "created_on": {
-                    "type": "string"
-                },
-                "daily_end_time": {
-                    "type": "string"
-                },
-                "daily_start_time": {
-                    "type": "string"
-                },
-                "district": {
-                    "$ref": "#/definitions/models.District"
-                },
-                "district_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "email": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "established_on": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "infrastructure": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ChildBranchInfrastructure"
-                    }
-                },
-                "members": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ChildBranchMember"
-                    }
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 2
-                },
-                "ncr": {
-                    "type": "boolean"
-                },
-                "open_days": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "parent_branch": {
-                    "$ref": "#/definitions/models.Branch"
-                },
-                "parent_branch_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "pincode": {
-                    "type": "string"
-                },
-                "police_station": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "post_office": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "region_id": {
-                    "type": "integer"
-                },
-                "state": {
-                    "$ref": "#/definitions/models.State"
-                },
-                "state_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "status": {
-                    "type": "boolean"
-                },
-                "updated_by": {
-                    "type": "string"
-                },
-                "updated_on": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ChildBranchInfrastructure": {
-            "type": "object",
-            "required": [
-                "child_branch_id",
-                "count",
-                "type"
-            ],
-            "properties": {
-                "child_branch": {
-                    "$ref": "#/definitions/models.ChildBranch"
-                },
-                "child_branch_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "count": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "created_by": {
-                    "type": "string"
-                },
-                "created_on": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                },
-                "updated_by": {
-                    "type": "string"
-                },
-                "updated_on": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ChildBranchMember": {
-            "type": "object",
-            "required": [
-                "child_branch_id",
-                "member_type",
-                "name"
-            ],
-            "properties": {
-                "age": {
-                    "type": "integer",
-                    "maximum": 150,
-                    "minimum": 0
-                },
-                "branch_role": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "child_branch": {
-                    "$ref": "#/definitions/models.ChildBranch"
-                },
-                "child_branch_id": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "created_by": {
-                    "type": "string"
-                },
-                "created_on": {
-                    "type": "string"
-                },
-                "date_of_birth": {
-                    "type": "string"
-                },
-                "date_of_samarpan": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "member_type": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 2
-                },
-                "qualification": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "responsibility": {
-                    "type": "string",
-                    "maxLength": 500
-                },
-                "updated_by": {
-                    "type": "string"
-                },
-                "updated_on": {
-                    "type": "string"
-                }
-            }
-        },
         "models.City": {
             "type": "object",
             "properties": {
@@ -6699,6 +6921,13 @@ const docTemplate = `{
                 "beneficiary_women": {
                     "type": "integer"
                 },
+                "branch": {
+                    "$ref": "#/definitions/models.Branch"
+                },
+                "branch_id": {
+                    "description": "Branch association (nullable - optional field for backward compatibility)",
+                    "type": "integer"
+                },
                 "city": {
                     "type": "string"
                 },
@@ -6746,6 +6975,9 @@ const docTemplate = `{
                 },
                 "initiation_women": {
                     "type": "integer"
+                },
+                "language": {
+                    "type": "string"
                 },
                 "pincode": {
                     "type": "string"
@@ -6817,9 +7049,6 @@ const docTemplate = `{
                     "description": "image, video, audio, file",
                     "type": "string"
                 },
-                "file_url": {
-                    "type": "string"
-                },
                 "first_name": {
                     "type": "string"
                 },
@@ -6841,13 +7070,29 @@ const docTemplate = `{
                 "middle_name": {
                     "type": "string"
                 },
+                "original_filename": {
+                    "description": "Original filename from upload",
+                    "type": "string"
+                },
                 "prefix": {
+                    "type": "string"
+                },
+                "s3_key": {
+                    "description": "Opaque S3 object key (UUID-based)",
+                    "type": "string"
+                },
+                "thumbnail_s3_key": {
+                    "description": "Optional thumbnail S3 key",
                     "type": "string"
                 },
                 "updated_by": {
                     "type": "string"
                 },
                 "updated_on": {
+                    "type": "string"
+                },
+                "url": {
+                    "description": "Computed: presigned URL (populated by ConvertEventMediaToPresignedURLs)",
                     "type": "string"
                 }
             }
@@ -7121,6 +7366,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Theme": {
+            "type": "object",
+            "properties": {
+                "created_on": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_on": {
                     "type": "string"
                 }
             }

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
@@ -87,6 +89,54 @@ func GetVolunteerByEventID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, vol)
+}
+
+// ExportVolunteersByEventIDHandler exports volunteers to Excel
+// @Summary Export volunteers by event ID to Excel
+// @Tags Volunteers
+// @Security ApiKeyAuth
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param event_id path int true "Event ID"
+// @Success 200 {file} file "Excel file"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/events/{event_id}/volunteers/export [get]
+func ExportVolunteersByEventIDHandler(c *gin.Context) {
+	eventID := c.Param("event_id")
+
+	evID, err := strconv.ParseUint(eventID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event ID"})
+		return
+	}
+
+	volunteers, err := services.GetVolunteerByEventID(uint(evID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get event name for filename
+	event, err := services.GetEventByID(uint(evID))
+	eventName := "Event"
+	if err == nil && event.Theme != "" {
+		eventName = event.Theme
+	}
+
+	// Export to Excel
+	excelBuffer, err := services.ExportVolunteersToExcel(volunteers, eventName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate Excel file: " + err.Error()})
+		return
+	}
+
+	filename := fmt.Sprintf("volunteers_event_%d_%s.xlsx", evID, time.Now().Format("20060102"))
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", excelBuffer.Len()))
+
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBuffer.Bytes())
 }
 
 // UpdateVolunteerHandler updates volunteer fields

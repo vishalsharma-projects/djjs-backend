@@ -552,6 +552,48 @@ func GetAllBranchMembers() ([]models.BranchMember, error) {
 	return members, nil
 }
 
+// GetBranchMembersWithFilters fetches branch members with optional filters
+func GetBranchMembersWithFilters(search string, memberType string, branchType string) ([]models.BranchMember, error) {
+	var members []models.BranchMember
+	db := config.DB.Preload("Branch")
+
+	// Apply search filter (searches in name, branch_role, responsibility, branch name)
+	if search != "" {
+		searchPattern := "%" + strings.ToLower(search) + "%"
+		db = db.Where(`
+			LOWER(name) LIKE ? OR 
+			LOWER(branch_role) LIKE ? OR 
+			LOWER(responsibility) LIKE ? OR
+			EXISTS (
+				SELECT 1 FROM branches 
+				WHERE branches.id = branch_member.branch_id 
+				AND LOWER(branches.name) LIKE ?
+			)
+		`, searchPattern, searchPattern, searchPattern, searchPattern)
+	}
+
+	// Apply member type filter
+	if memberType != "" && memberType != "all" {
+		db = db.Where("LOWER(member_type) = LOWER(?)", memberType)
+	}
+
+	// Apply branch type filter
+	if branchType != "" && branchType != "all" {
+		if branchType == "branch" {
+			// Only parent branches (parent_branch_id IS NULL)
+			db = db.Where("EXISTS (SELECT 1 FROM branches WHERE branches.id = branch_member.branch_id AND branches.parent_branch_id IS NULL)")
+		} else if branchType == "child_branch" {
+			// Only child branches (parent_branch_id IS NOT NULL)
+			db = db.Where("EXISTS (SELECT 1 FROM branches WHERE branches.id = branch_member.branch_id AND branches.parent_branch_id IS NOT NULL)")
+		}
+	}
+
+	if err := db.Find(&members).Error; err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
 // GetMembersByBranch fetches members for a specific branch
 func GetMembersByBranch(branchID uint) ([]models.BranchMember, error) {
 	var members []models.BranchMember

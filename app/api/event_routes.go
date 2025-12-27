@@ -14,10 +14,14 @@ func SetupEventRoutes(r *gin.RouterGroup) {
 		events.POST("", handlers.CreateEventHandler)
 		events.GET("", handlers.GetAllEventsHandler)
 		events.GET("/search", handlers.SearchEventsHandler)
+		events.GET("/export", handlers.ExportEventsHandler)
 
 		// Event-specific routes (must be before /:event_id to avoid conflicts)
 		events.GET("/:event_id/specialguests", handlers.GetSpecialGuestByEventID)
+		events.GET("/:event_id/specialguests/export", handlers.ExportSpecialGuestsByEventIDHandler)
 		events.GET("/:event_id/volunteers", handlers.GetVolunteerByEventID)
+		events.GET("/:event_id/volunteers/export", handlers.ExportVolunteersByEventIDHandler)
+		events.GET("/:event_id/media/export", handlers.ExportEventMediaByEventIDHandler)
 		events.GET("/:event_id/donations", handlers.GetDonationsByEvent)
 		events.GET("/:event_id/promotion-materials", handlers.GetPromotionMaterialDetailsByEventIDHandler)
 

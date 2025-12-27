@@ -185,3 +185,40 @@ func UpdateEventStatus(eventID uint, status string) error {
 
 	return nil
 }
+
+// GetEventsByDateRange retrieves events within a date range
+// startDate and endDate are optional - if nil, no date filtering is applied
+func GetEventsByDateRange(startDate *time.Time, endDate *time.Time, statusFilter string) ([]models.EventDetails, error) {
+	var events []models.EventDetails
+
+	db := config.DB.
+		Preload("EventType").
+		Preload("EventCategory").
+		Preload("Branch")
+
+	// Apply status filter if provided
+	if statusFilter != "" {
+		db = db.Where("status = ?", statusFilter)
+	}
+
+	// Apply date range filter
+	// An event overlaps with the date range if:
+	// - event starts before or on the end date AND
+	// - event ends on or after the start date
+	if startDate != nil && endDate != nil {
+		// Both dates provided: find events that overlap with the range
+		db = db.Where("(start_date <= ? AND end_date >= ?)", *endDate, *startDate)
+	} else if startDate != nil {
+		// Only start date: find events that end on or after start date
+		db = db.Where("end_date >= ?", *startDate)
+	} else if endDate != nil {
+		// Only end date: find events that start on or before end date
+		db = db.Where("start_date <= ?", *endDate)
+	}
+
+	if err := db.Order("start_date ASC").Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}
