@@ -225,6 +225,27 @@ func MapFrontendPayloadToEvent(generalDetails map[string]interface{}, involvedPa
 		}
 	}
 
+	// Address Type
+	if addressType, ok := generalDetails["addressType"].(string); ok && addressType != "" {
+		event.AddressType = addressType
+	} else if addressType, ok := generalDetails["address_type"].(string); ok && addressType != "" {
+		event.AddressType = addressType
+	}
+
+	// Police Station
+	if policeStation, ok := generalDetails["policeStation"].(string); ok && policeStation != "" {
+		event.PoliceStation = policeStation
+	} else if policeStation, ok := generalDetails["police_station"].(string); ok && policeStation != "" {
+		event.PoliceStation = policeStation
+	}
+
+	// Area Covered
+	if areaCovered, ok := generalDetails["areaCovered"].(string); ok && areaCovered != "" {
+		event.AreaCovered = areaCovered
+	} else if areaCovered, ok := generalDetails["area_covered"].(string); ok && areaCovered != "" {
+		event.AreaCovered = areaCovered
+	}
+
 	// Map branch_id (optional field)
 	if branchId, ok := generalDetails["branchId"].(float64); ok && branchId > 0 {
 		branchIDUint := uint(branchId)

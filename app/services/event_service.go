@@ -145,6 +145,55 @@ func DeleteEvent(eventID uint) error {
 	return nil
 }
 
+// DeleteEventRelatedData deletes all related data for an event (without deleting the event itself)
+// This is used when updating an event to replace old related data with new ones
+func DeleteEventRelatedData(eventID uint) error {
+	// Start a transaction to ensure all deletions succeed or none do
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Delete all special guests for this event
+	if err := tx.Where("event_id = ?", eventID).Delete(&models.SpecialGuest{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("failed to delete special guests: " + err.Error())
+	}
+
+	// Delete all volunteers for this event
+	if err := tx.Where("event_id = ?", eventID).Delete(&models.Volunteer{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("failed to delete volunteers: " + err.Error())
+	}
+
+	// Delete all event media for this event
+	if err := tx.Where("event_id = ?", eventID).Delete(&models.EventMedia{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("failed to delete event media: " + err.Error())
+	}
+
+	// Delete all donations for this event
+	if err := tx.Where("event_id = ?", eventID).Delete(&models.Donation{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("failed to delete donations: " + err.Error())
+	}
+
+	// Delete all promotion material details for this event
+	if err := tx.Where("event_id = ?", eventID).Delete(&models.PromotionMaterialDetails{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("failed to delete promotion materials: " + err.Error())
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return errors.New("failed to commit transaction: " + err.Error())
+	}
+
+	return nil
+}
+
 // GetEventByID retrieves an event by ID with all related data
 func GetEventByID(eventID uint) (*models.EventDetails, error) {
 	var event models.EventDetails

@@ -158,6 +158,9 @@ type EventDetails struct {
 	PostOffice string `json:"post_office,omitempty"`
 	Pincode    string `json:"pincode,omitempty"`
 	Address    string `json:"address,omitempty"`
+	AddressType string `json:"address_type,omitempty"`
+	PoliceStation string `json:"police_station,omitempty"`
+	AreaCovered  string `json:"area_covered,omitempty"`
 
 	BeneficiaryMen   int `json:"beneficiary_men"`
 	BeneficiaryWomen int `json:"beneficiary_women"`

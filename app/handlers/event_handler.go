@@ -156,11 +156,22 @@ func GetAllEventsHandler(c *gin.Context) {
 			donations = []models.Donation{}
 		}
 
-		// Get branch from first volunteer or donation
+		// Get branch - check preloaded Branch first, then event.BranchID, then fallback to volunteers/donations
 		var branchName string
 		var branchID uint
-		if len(volunteers) > 0 && volunteers[0].BranchID > 0 {
-			// Try to get branch from first volunteer
+		if event.Branch != nil && event.Branch.ID > 0 {
+			// Use preloaded branch relationship (most efficient)
+			branchName = event.Branch.Name
+			branchID = event.Branch.ID
+		} else if event.BranchID != nil && *event.BranchID > 0 {
+			// Get branch from event's BranchID field (if preload didn't work)
+			var branch models.Branch
+			if err := config.DB.First(&branch, *event.BranchID).Error; err == nil {
+				branchName = branch.Name
+				branchID = branch.ID
+			}
+		} else if len(volunteers) > 0 && volunteers[0].BranchID > 0 {
+			// Fallback to first volunteer's branch
 			var branch models.Branch
 			if err := config.DB.First(&branch, volunteers[0].BranchID).Error; err == nil {
 				branchName = branch.Name
@@ -197,6 +208,9 @@ func GetAllEventsHandler(c *gin.Context) {
 			"post_office":              event.PostOffice,
 			"pincode":                  event.Pincode,
 			"address":                  event.Address,
+			"address_type":             event.AddressType,
+			"police_station":           event.PoliceStation,
+			"area_covered":            event.AreaCovered,
 			"beneficiary_men":          event.BeneficiaryMen,
 			"beneficiary_women":        event.BeneficiaryWomen,
 			"beneficiary_child":        event.BeneficiaryChild,
@@ -211,6 +225,8 @@ func GetAllEventsHandler(c *gin.Context) {
 			"event_type":               event.EventType,
 			"event_category":           event.EventCategory,
 			"special_guests_count":     len(specialGuests),
+			"specialGuests":            specialGuests,
+			"specialGuestsList":        specialGuests,
 			"volunteers_count":         len(volunteers),
 			"media_count":              len(mediaList),
 			"promotion_materials_count": len(promotionMaterials),
@@ -295,31 +311,42 @@ func GetEventByIdHandler(c *gin.Context) {
 		donations = []models.Donation{}
 	}
 
-	// Get branch from first volunteer or donation
-	var branchName string
-	var branchID uint
-	if len(volunteers) > 0 && volunteers[0].BranchID > 0 {
-		// Try to get branch from first volunteer
-		var branch models.Branch
-		if err := config.DB.First(&branch, volunteers[0].BranchID).Error; err == nil {
-			branchName = branch.Name
-			branchID = branch.ID
+		// Get branch - check preloaded Branch first, then event.BranchID, then fallback to volunteers/donations
+		var branchName string
+		var branchID uint
+		if event.Branch != nil && event.Branch.ID > 0 {
+			// Use preloaded branch relationship (most efficient)
+			branchName = event.Branch.Name
+			branchID = event.Branch.ID
+		} else if event.BranchID != nil && *event.BranchID > 0 {
+			// Get branch from event's BranchID field (if preload didn't work)
+			var branch models.Branch
+			if err := config.DB.First(&branch, *event.BranchID).Error; err == nil {
+				branchName = branch.Name
+				branchID = branch.ID
+			}
+		} else if len(volunteers) > 0 && volunteers[0].BranchID > 0 {
+			// Fallback to first volunteer's branch
+			var branch models.Branch
+			if err := config.DB.First(&branch, volunteers[0].BranchID).Error; err == nil {
+				branchName = branch.Name
+				branchID = branch.ID
+			}
+		} else if len(donations) > 0 && donations[0].BranchID > 0 {
+			// Fallback to first donation's branch
+			var branch models.Branch
+			if err := config.DB.First(&branch, donations[0].BranchID).Error; err == nil {
+				branchName = branch.Name
+				branchID = branch.ID
+			}
 		}
-	} else if len(donations) > 0 && donations[0].BranchID > 0 {
-		// Fallback to first donation's branch
-		var branch models.Branch
-		if err := config.DB.First(&branch, donations[0].BranchID).Error; err == nil {
-			branchName = branch.Name
-			branchID = branch.ID
-		}
-	}
 
-	// Build response with event and related data
-	response := gin.H{
-		"event":                  event,
-		"branch":                 branchName,
-		"branch_id":              branchID,
-		"specialGuests":          specialGuests,
+		// Build response with event and related data
+		response := gin.H{
+			"event":                  event,
+			"branch":                 branchName,
+			"branch_id":              branchID,
+			"specialGuests":          specialGuests,
 		"volunteers":             volunteers,
 		"media":                  mediaList,
 		"promotionMaterials":     promotionMaterials,
@@ -461,6 +488,15 @@ func UpdateEventHandler(c *gin.Context) {
 		if event.Address != "" {
 			updateData["address"] = event.Address
 		}
+		if event.AddressType != "" {
+			updateData["address_type"] = event.AddressType
+		}
+		if event.PoliceStation != "" {
+			updateData["police_station"] = event.PoliceStation
+		}
+		if event.AreaCovered != "" {
+			updateData["area_covered"] = event.AreaCovered
+		}
 		if event.BeneficiaryMen > 0 {
 			updateData["beneficiary_men"] = event.BeneficiaryMen
 		}
@@ -479,6 +515,9 @@ func UpdateEventHandler(c *gin.Context) {
 		if event.InitiationChild > 0 {
 			updateData["initiation_child"] = event.InitiationChild
 		}
+		if event.BranchID != nil && *event.BranchID > 0 {
+			updateData["branch_id"] = *event.BranchID
+		}
 		if event.Status != "" {
 			updateData["status"] = event.Status
 		}
@@ -495,7 +534,12 @@ func UpdateEventHandler(c *gin.Context) {
 			return
 		}
 
-		// Update related data if provided
+		// Delete old related data before creating new ones (to avoid duplicates)
+		if err := services.DeleteEventRelatedData(uint(eventID)); err != nil {
+			log.Printf("Warning: Failed to delete old related data: %v", err)
+		}
+
+		// Create new related data (replaces the old ones)
 		if err := services.CreateEventRelatedData(uint(eventID), frontendPayload); err != nil {
 			log.Printf("Warning: Failed to update related data: %v", err)
 		}

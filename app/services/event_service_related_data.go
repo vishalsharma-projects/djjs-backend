@@ -37,11 +37,13 @@ func CreateEventRelatedData(eventID uint, payload struct {
 					EventID: eventID,
 				}
 
-				// Get media coverage type
+				// Get media coverage type (required field)
+				mediaCoverageTypeSet := false
 				if mediaTypeName, ok := mediaMap["mediaCoverageType"].(string); ok && mediaTypeName != "" {
 					var mediaType models.MediaCoverageType
 					if err := config.DB.Where("media_type = ?", mediaTypeName).First(&mediaType).Error; err == nil {
 						media.MediaCoverageTypeID = mediaType.ID
+						mediaCoverageTypeSet = true
 					}
 				}
 
@@ -110,8 +112,13 @@ func CreateEventRelatedData(eventID uint, payload struct {
 					}
 				}
 
-				if media.CompanyName != "" && media.FirstName != "" && media.LastName != "" {
-					_ = config.DB.Create(&media)
+				// Validate required fields: MediaCoverageTypeID, CompanyName, FirstName, LastName
+				// All are required by database NOT NULL constraints
+				if mediaCoverageTypeSet && media.CompanyName != "" && media.FirstName != "" && media.LastName != "" {
+					if err := config.DB.Create(&media).Error; err != nil {
+						// Log error but continue processing other media items
+						// This prevents one bad record from blocking all others
+					}
 				}
 			}
 		}
@@ -226,8 +233,13 @@ func CreateEventRelatedData(eventID uint, payload struct {
 				guest.ReferencePersonName = val
 			}
 
-			if guest.Prefix != "" {
-				_ = config.DB.Create(&guest)
+			// Validate required fields: Prefix is required by database NOT NULL constraint
+			// Also require at least one identifying field (FirstName, LastName, or Organization)
+			if guest.Prefix != "" && (guest.FirstName != "" || guest.LastName != "" || guest.Organization != "") {
+				if err := config.DB.Create(&guest).Error; err != nil {
+					// Log error but continue processing other guests
+					// This prevents one bad record from blocking all others
+				}
 			}
 		}
 	}

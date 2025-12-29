@@ -137,6 +137,9 @@ CREATE TABLE event_details (
     post_office VARCHAR(100),
     pincode VARCHAR(20),
     address TEXT,
+    address_type VARCHAR(50),
+    police_station VARCHAR(100),
+    area_covered VARCHAR(50),
 
     beneficiary_men INT DEFAULT 0,
     beneficiary_women INT DEFAULT 0,
