@@ -1053,6 +1053,9 @@ func ExportEventsHandler(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 	statusFilter := c.Query("status")
+	
+	// Always filter by created_on date
+	dateFilterType := "created_on"
 
 	var startDate *time.Time
 	var endDate *time.Time
@@ -1064,7 +1067,9 @@ func ExportEventsHandler(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
 			return
 		}
-		startDate = &parsed
+		// Set start date to start of day (00:00:00) in UTC to ensure consistent comparison
+		startOfDay := time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
+		startDate = &startOfDay
 	}
 
 	// Parse end date
@@ -1075,7 +1080,7 @@ func ExportEventsHandler(c *gin.Context) {
 			return
 		}
 		// Set end date to end of day
-		endOfDay := time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 23, 59, 59, 999999999, parsed.Location())
+		endOfDay := time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 23, 59, 59, 999999999, time.UTC)
 		endDate = &endOfDay
 	}
 
@@ -1086,7 +1091,7 @@ func ExportEventsHandler(c *gin.Context) {
 	}
 
 	// Get events by date range
-	events, err := services.GetEventsByDateRange(startDate, endDate, statusFilter)
+	events, err := services.GetEventsByDateRange(startDate, endDate, statusFilter, dateFilterType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch events: " + err.Error()})
 		return

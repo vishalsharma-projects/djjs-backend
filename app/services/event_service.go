@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	// "log"
 	"time"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
@@ -186,9 +187,10 @@ func UpdateEventStatus(eventID uint, status string) error {
 	return nil
 }
 
-// GetEventsByDateRange retrieves events within a date range
+// GetEventsByDateRange retrieves events within a date range filtered by created_on date
 // startDate and endDate are optional - if nil, no date filtering is applied
-func GetEventsByDateRange(startDate *time.Time, endDate *time.Time, statusFilter string) ([]models.EventDetails, error) {
+// dateFilterType is always "created_on" - filters by when the event was created
+func GetEventsByDateRange(startDate *time.Time, endDate *time.Time, statusFilter string, dateFilterType string) ([]models.EventDetails, error) {
 	var events []models.EventDetails
 
 	db := config.DB.
@@ -202,21 +204,21 @@ func GetEventsByDateRange(startDate *time.Time, endDate *time.Time, statusFilter
 	}
 
 	// Apply date range filter
-	// An event overlaps with the date range if:
-	// - event starts before or on the end date AND
-	// - event ends on or after the start date
+	// Find events where the created_on date falls within the selected date range
+	// Since startDate is 00:00:00 UTC and endDate is 23:59:59.999 UTC, we can compare timestamps directly
 	if startDate != nil && endDate != nil {
-		// Both dates provided: find events that overlap with the range
-		db = db.Where("(start_date <= ? AND end_date >= ?)", *endDate, *startDate)
+		// Both dates provided: find events within the range (inclusive)
+		// Direct timestamp comparison - startDate is start of day, endDate is end of day
+		db = db.Where("created_on >= ? AND created_on <= ?", *startDate, *endDate)
 	} else if startDate != nil {
-		// Only start date: find events that end on or after start date
-		db = db.Where("end_date >= ?", *startDate)
+		// Only start date: find events on or after start date
+		db = db.Where("created_on >= ?", *startDate)
 	} else if endDate != nil {
-		// Only end date: find events that start on or before end date
-		db = db.Where("start_date <= ?", *endDate)
+		// Only end date: find events on or before end date
+		db = db.Where("created_on <= ?", *endDate)
 	}
 
-	if err := db.Order("start_date ASC").Find(&events).Error; err != nil {
+	if err := db.Order("created_on DESC").Find(&events).Error; err != nil {
 		return nil, err
 	}
 
