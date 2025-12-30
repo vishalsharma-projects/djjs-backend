@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,6 +103,22 @@ func main() {
 
 	// 3️⃣b Startup invariant check: verify no legacy records with NULL s3_key
 	checkLegacyRecords()
+
+	// 3️⃣c Start draft cleanup scheduler (runs daily to delete drafts older than 10 days)
+	// Get cleanup hour from environment (default: 2 AM)
+	cleanupHour := 2 // Default to 2 AM
+	if cleanupHourStr := os.Getenv("DRAFT_CLEANUP_HOUR"); cleanupHourStr != "" {
+		if parsedHour, err := strconv.Atoi(cleanupHourStr); err == nil && parsedHour >= 0 && parsedHour <= 23 {
+			cleanupHour = parsedHour
+		}
+	}
+	daysOld := 10 // Delete drafts older than 10 days
+	if daysOldStr := os.Getenv("DRAFT_CLEANUP_DAYS"); daysOldStr != "" {
+		if parsedDays, err := strconv.Atoi(daysOldStr); err == nil && parsedDays > 0 {
+			daysOld = parsedDays
+		}
+	}
+	services.StartDraftCleanupScheduler(cleanupHour, daysOld)
 
 	// 4️⃣ Create Gin router
 	r := gin.New()

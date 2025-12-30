@@ -88,6 +88,25 @@ func DeleteDraft(draftID uint) error {
 	return nil
 }
 
+// CleanupOldDrafts deletes all drafts that are older than the specified number of days
+// Returns the number of drafts deleted and any error that occurred
+func CleanupOldDrafts(daysOld int) (int64, error) {
+	if daysOld < 0 {
+		return 0, errors.New("daysOld must be non-negative")
+	}
+
+	// Calculate the cutoff time (now minus the specified number of days)
+	cutoffTime := time.Now().AddDate(0, 0, -daysOld)
+
+	// Delete drafts older than the cutoff time
+	result := config.DB.Where("created_on < ?", cutoffTime).Delete(&models.EventDraft{})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	return result.RowsAffected, nil
+}
+
 
 
 
