@@ -9,7 +9,7 @@ import (
 // SetupBranchMediaRoutes configures branch media CRUD routes
 func SetupBranchMediaRoutes(r *gin.RouterGroup) {
 	media := r.Group("/branch-media")
-	media.Use(middleware.AuthMiddleware())
+	media.Use(middleware.AuthRequired())
 	{
 		media.GET("", handlers.GetAllBranchMediaHandler)
 		media.GET("/branch/:branch_id", handlers.GetBranchMediaByBranchIDHandler)
@@ -19,7 +19,7 @@ func SetupBranchMediaRoutes(r *gin.RouterGroup) {
 // SetupChildBranchMediaRoutes configures child branch media CRUD routes
 func SetupChildBranchMediaRoutes(r *gin.RouterGroup) {
 	media := r.Group("/child-branch-media")
-	media.Use(middleware.AuthMiddleware())
+	media.Use(middleware.AuthRequired())
 	{
 		media.GET("", handlers.GetAllBranchMediaHandler)
 		media.GET("/branch/:branch_id", handlers.GetBranchMediaByBranchIDHandler)

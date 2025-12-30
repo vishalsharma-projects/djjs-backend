@@ -9,7 +9,7 @@ import (
 // SetupFileRoutes configures file upload/download routes
 func SetupFileRoutes(r *gin.RouterGroup) {
 	files := r.Group("/files")
-	files.Use(middleware.AuthMiddleware())
+	files.Use(middleware.AuthRequired())
 	{
 		files.POST("/upload", handlers.UploadFileHandler)
 		files.POST("/upload-multiple", handlers.UploadMultipleFilesHandler)

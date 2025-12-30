@@ -9,7 +9,7 @@ import (
 // SetupChildBranchRoutes configures child branch CRUD routes
 func SetupChildBranchRoutes(r *gin.RouterGroup) {
 	childBranches := r.Group("/child-branches")
-	childBranches.Use(middleware.AuthMiddleware())
+	childBranches.Use(middleware.AuthRequired())
 	{
 		childBranches.POST("", handlers.CreateChildBranchHandler)
 		childBranches.GET("", handlers.GetAllChildBranchesHandler)

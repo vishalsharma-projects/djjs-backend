@@ -9,7 +9,7 @@ import (
 // SetupSpecialGuestRoutes configures special guest routes
 func SetupSpecialGuestRoutes(r *gin.RouterGroup) {
 	specialguests := r.Group("/specialguests")
-	specialguests.Use(middleware.AuthMiddleware())
+	specialguests.Use(middleware.AuthRequired())
 	{
 		specialguests.POST("", handlers.CreateSpecialGuestHandler)
 		specialguests.GET("", handlers.GetAllSpecialGuestsHandler)

@@ -1744,6 +1744,56 @@ paths:
       summary: Get Branch Media by Branch ID
       tags:
       - BranchMedia
+  /api/child-branch-media:
+    get:
+      description: Retrieve all Child Branch Media records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all Child Branch Media
+      tags:
+      - ChildBranchMedia
+  /api/child-branch-media/branch/{branch_id}:
+    get:
+      description: Get all Child Branch Media records for a specific Branch ID
+      parameters:
+      - description: Branch ID
+        in: path
+        name: branch_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Child Branch Media by Branch ID
+      tags:
+      - ChildBranchMedia
   /api/branch-member:
     get:
       description: Retrieve all branch members across all branches with their branch
@@ -3587,6 +3637,40 @@ paths:
       summary: Export volunteers by event ID to Excel
       tags:
       - Volunteers
+  /api/events/{event_id}/promotion-materials:
+    get:
+      description: Get all Promotion Material Details records for a specific Event ID
+      parameters:
+      - description: Event ID
+        in: path
+        name: event_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Promotion Material Details by Event ID
+      tags:
+      - PromotionMaterialDetails
   /api/events/draft:
     post:
       consumes:
@@ -5429,4 +5513,9 @@ securityDefinitions:
     in: header
     name: Authorization
     type: apiKey
+  BearerAuth:
+    type: apiKey
+    in: header
+    name: Authorization
+    description: "Bearer token authentication. Format: 'Bearer {token}'"
 swagger: "2.0"

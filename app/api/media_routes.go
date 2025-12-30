@@ -9,7 +9,7 @@ import (
 // SetupMediaRoutes configures media CRUD routes
 func SetupMediaRoutes(r *gin.RouterGroup) {
 	media := r.Group("/event-media")
-	media.Use(middleware.AuthMiddleware())
+	media.Use(middleware.AuthRequired())
 	{
 		media.POST("", handlers.CreateEventMediaHandler)
 		media.GET("", handlers.GetAllEventMediaHandler)

@@ -9,7 +9,7 @@ import (
 // SetupVolunteerRoutes configures volunteer routes
 func SetupVolunteerRoutes(r *gin.RouterGroup) {
 	volunteers := r.Group("/volunteers")
-	volunteers.Use(middleware.AuthMiddleware())
+	volunteers.Use(middleware.AuthRequired())
 	{
 		volunteers.POST("", handlers.CreateVolunteerHandler)
 		volunteers.GET("", handlers.GetAllVolunteersHandler)

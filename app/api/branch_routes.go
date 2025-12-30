@@ -10,7 +10,7 @@ import (
 // SetupBranchRoutes configures branch CRUD routes
 func SetupBranchRoutes(r *gin.RouterGroup) {
 	branches := r.Group("/branches")
-	branches.Use(middleware.AuthMiddleware())
+	branches.Use(middleware.AuthRequired())
 	{
 		branches.POST("", 
 			middleware.RequirePermission(models.ResourceBranch, models.ActionCreate),
@@ -40,7 +40,7 @@ func SetupBranchRoutes(r *gin.RouterGroup) {
 
 	// Branch Infrastructure routes
 	branchInfra := r.Group("/branch-infra")
-	branchInfra.Use(middleware.AuthMiddleware())
+	branchInfra.Use(middleware.AuthRequired())
 	{
 		branchInfra.POST("", handlers.CreateBranchInfrastructureHandler)
 		branchInfra.GET("", handlers.GetAllBranchInfrastructureHandler)
@@ -51,7 +51,7 @@ func SetupBranchRoutes(r *gin.RouterGroup) {
 
 	// Branch Member routes
 	branchMember := r.Group("/branch-member")
-	branchMember.Use(middleware.AuthMiddleware())
+	branchMember.Use(middleware.AuthRequired())
 	{
 		branchMember.POST("", handlers.CreateBranchMemberHandler)
 		branchMember.GET("", handlers.GetAllBranchMembersHandler)

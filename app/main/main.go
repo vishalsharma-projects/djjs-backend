@@ -253,7 +253,7 @@ func main() {
 	api.SetupRoutes(r)
 
 	// 6️⃣ Protected route example
-	r.GET("/protected", middleware.AuthMiddleware(), func(c *gin.Context) {
+	r.GET("/protected", middleware.AuthRequired(), func(c *gin.Context) {
 		userID, _ := c.Get("userID")
 		roleID, _ := c.Get("roleID")
 		c.JSON(200, gin.H{

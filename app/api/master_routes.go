@@ -9,7 +9,7 @@ import (
 // SetupMasterRoutes configures master data routes for dropdowns
 func SetupMasterRoutes(r *gin.RouterGroup) {
 	master := r.Group("")
-	master.Use(middleware.AuthMiddleware())
+	master.Use(middleware.AuthRequired())
 	{
 		master.GET("/event-types", handlers.GetAllEventTypesHandler)
 		master.GET("/event-categories", handlers.GetAllEventCategoriesHandler)

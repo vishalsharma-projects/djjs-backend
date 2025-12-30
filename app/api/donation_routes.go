@@ -9,7 +9,7 @@ import (
 // SetupDonationRoutes configures donation CRUD routes
 func SetupDonationRoutes(r *gin.RouterGroup) {
 	donations := r.Group("/donations")
-	donations.Use(middleware.AuthMiddleware())
+	donations.Use(middleware.AuthRequired())
 	{
 		donations.POST("", handlers.CreateDonation)
 		donations.GET("", handlers.GetAllDonations)

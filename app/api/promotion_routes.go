@@ -9,7 +9,7 @@ import (
 // SetupPromotionRoutes configures promotion material routes
 func SetupPromotionRoutes(r *gin.RouterGroup) {
 	promotion := r.Group("/promotion-material-details")
-	promotion.Use(middleware.AuthMiddleware())
+	promotion.Use(middleware.AuthRequired())
 	{
 		promotion.POST("", handlers.CreatePromotionMaterialDetailsHandler)
 		promotion.GET("", handlers.GetAllPromotionMaterialDetailsHandler)

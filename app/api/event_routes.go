@@ -10,7 +10,7 @@ import (
 // SetupEventRoutes configures event CRUD routes
 func SetupEventRoutes(r *gin.RouterGroup) {
 	events := r.Group("/events")
-	events.Use(middleware.AuthMiddleware())
+	events.Use(middleware.AuthRequired())
 	{
 		events.POST("", 
 			middleware.RequirePermission(models.ResourceEvent, models.ActionCreate),

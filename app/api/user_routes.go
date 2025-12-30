@@ -10,7 +10,7 @@ import (
 // SetupUserRoutes configures user CRUD routes
 func SetupUserRoutes(r *gin.RouterGroup) {
 	users := r.Group("/users")
-	users.Use(middleware.AuthMiddleware())
+	users.Use(middleware.AuthRequired())
 	{
 		users.POST("", 
 			middleware.RequirePermission(models.ResourceUser, models.ActionCreate),

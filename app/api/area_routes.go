@@ -9,7 +9,7 @@ import (
 // SetupAreaRoutes configures area CRUD routes
 func SetupAreaRoutes(r *gin.RouterGroup) {
 	areas := r.Group("/areas")
-	areas.Use(middleware.AuthMiddleware())
+	areas.Use(middleware.AuthRequired())
 	{
 		areas.POST("", handlers.CreateAreaHandler)
 		areas.GET("", handlers.GetAllAreasHandler)

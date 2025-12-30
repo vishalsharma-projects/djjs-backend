@@ -11,7 +11,7 @@ import (
 func SetupRBACRoutes(apiGroup *gin.RouterGroup, rbacHandler *handlers.RBACHandler) {
 	// RBAC management routes - require authentication and super_admin role
 	rbac := apiGroup.Group("/rbac")
-	rbac.Use(middleware.AuthRequired()) // or AuthMiddleware() depending on which you use
+	rbac.Use(middleware.AuthRequired())
 	{
 		// Role management - Super Admin only
 		roles := rbac.Group("/roles")
