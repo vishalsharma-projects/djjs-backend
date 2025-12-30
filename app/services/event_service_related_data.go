@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"log"
 	"strconv"
 
 	"github.com/followCode/djjs-event-reporting-backend/app/models"
@@ -26,8 +27,13 @@ func CreateEventRelatedData(eventID uint, payload struct {
 	var eventMediaList []interface{}
 	if list, ok := payload.MediaPromotion["eventMediaList"].([]interface{}); ok {
 		eventMediaList = list
+		log.Printf("Found eventMediaList with %d items for event %d", len(eventMediaList), eventID)
 	} else if list, ok := payload.MediaPromotion["eventMedia"].([]interface{}); ok {
 		eventMediaList = list
+		log.Printf("Found eventMedia (legacy) with %d items for event %d", len(eventMediaList), eventID)
+	} else {
+		log.Printf("No eventMediaList or eventMedia found in MediaPromotion for event %d. MediaPromotion keys: %v", 
+			eventID, getMapKeys(payload.MediaPromotion))
 	}
 
 	if len(eventMediaList) > 0 {
@@ -118,7 +124,15 @@ func CreateEventRelatedData(eventID uint, payload struct {
 					if err := config.DB.Create(&media).Error; err != nil {
 						// Log error but continue processing other media items
 						// This prevents one bad record from blocking all others
+						log.Printf("Error creating event media for event %d: %v", eventID, err)
+					} else {
+						log.Printf("Successfully created event media for event %d: company=%s, person=%s %s", 
+							eventID, media.CompanyName, media.FirstName, media.LastName)
 					}
+				} else {
+					// Log validation failure for debugging
+					log.Printf("Event media validation failed for event %d: mediaCoverageTypeSet=%v, companyName=%v, firstName=%v, lastName=%v", 
+						eventID, mediaCoverageTypeSet, media.CompanyName != "", media.FirstName != "", media.LastName != "")
 				}
 			}
 		}
@@ -394,4 +408,13 @@ func CreateEventRelatedData(eventID uint, payload struct {
 	// after event creation, or we can process them here if needed
 
 	return nil
+}
+
+// Helper function to get map keys for logging
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

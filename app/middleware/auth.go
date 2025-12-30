@@ -50,17 +50,34 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Extract session ID
-		sessionID, err := auth.ParseSessionIDFromToken(claims)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
-			c.Abort()
-			return
-		}
+	// Extract session ID
+	sessionID, err := auth.ParseSessionIDFromToken(claims)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+		c.Abort()
+		return
+	}
+
+	// Extract role information
+	roleID, err := auth.ParseRoleIDFromToken(claims)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+		c.Abort()
+		return
+	}
+
+	roleName, err := auth.ParseRoleNameFromToken(claims)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
+		c.Abort()
+		return
+	}
 
 		// Set context values
 		c.Set(contextUserIDKey, userID)
 		c.Set(contextSessionIDKey, sessionID)
+		c.Set("roleID", roleID)
+		c.Set("roleName", roleName)
 
 		c.Next()
 	}

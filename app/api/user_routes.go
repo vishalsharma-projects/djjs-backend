@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/followCode/djjs-event-reporting-backend/app/handlers"
 	"github.com/followCode/djjs-event-reporting-backend/app/middleware"
+	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,12 +12,24 @@ func SetupUserRoutes(r *gin.RouterGroup) {
 	users := r.Group("/users")
 	users.Use(middleware.AuthMiddleware())
 	{
-		users.POST("", handlers.CreateUserHandler)
-		users.GET("", handlers.GetAllUsersHandler)
-		users.GET("/search", handlers.GetUserSearchHandler)
-		users.GET("/:id", handlers.GetUserByIDHandler)
-		users.PUT("/:id", handlers.UpdateUserHandler)
-		users.DELETE("/:id", handlers.DeleteUserHandler)
+		users.POST("", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionCreate),
+			handlers.CreateUserHandler)
+		users.GET("", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionList),
+			handlers.GetAllUsersHandler)
+		users.GET("/search", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionList),
+			handlers.GetUserSearchHandler)
+		users.GET("/:id", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionRead),
+			handlers.GetUserByIDHandler)
+		users.PUT("/:id", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionUpdate),
+			handlers.UpdateUserHandler)
+		users.DELETE("/:id", 
+			middleware.RequirePermission(models.ResourceUser, models.ActionDelete),
+			handlers.DeleteUserHandler)
 		users.POST("/:id/change-password", handlers.ChangePasswordHandler)
 		users.POST("/:id/reset-password", handlers.ResetPasswordHandler)
 	}

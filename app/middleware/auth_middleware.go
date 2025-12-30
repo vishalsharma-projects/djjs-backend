@@ -83,6 +83,12 @@ func AuthMiddleware() gin.HandlerFunc {
             log.Printf("[AuthMiddleware] Token mismatch for user %d (old system check)", userID)
         }
 
+        // Load role to get role name
+        var role models.Role
+        if err := config.DB.First(&role, user.RoleID).Error; err == nil {
+            c.Set("roleName", role.Name)
+        }
+        
         // Pass user info to handlers
         c.Set("userID", userID)
         c.Set("roleID", user.RoleID)

@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/followCode/djjs-event-reporting-backend/app/handlers"
 	"github.com/followCode/djjs-event-reporting-backend/app/services"
+	"github.com/followCode/djjs-event-reporting-backend/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,6 +37,10 @@ func SetupRoutes(r *gin.Engine) {
 		SetupFileRoutes(api)
 		SetupBranchMediaRoutes(api)
 		SetupChildBranchMediaRoutes(api)
+
+		// RBAC routes
+		rbacHandler := handlers.NewRBACHandler(config.DB)
+		SetupRBACRoutes(api, rbacHandler)
 	}
 }
 

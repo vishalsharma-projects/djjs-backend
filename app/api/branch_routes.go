@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/followCode/djjs-event-reporting-backend/app/handlers"
 	"github.com/followCode/djjs-event-reporting-backend/app/middleware"
+	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,14 +12,30 @@ func SetupBranchRoutes(r *gin.RouterGroup) {
 	branches := r.Group("/branches")
 	branches.Use(middleware.AuthMiddleware())
 	{
-		branches.POST("", handlers.CreateBranchHandler)
-		branches.GET("", handlers.GetAllBranchesHandler)
-		branches.GET("/search", handlers.GetBranchSearchHandler)
-		branches.GET("/export", handlers.ExportBranchesHandler) // Must be before /:id route
-		branches.GET("/parent/:parent_id/children", handlers.GetChildBranchesHandler)
-		branches.GET("/:id", handlers.GetBranchHandler)
-		branches.PUT("/:id", handlers.UpdateBranchHandler)
-		branches.DELETE("/:id", handlers.DeleteBranchHandler)
+		branches.POST("", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionCreate),
+			handlers.CreateBranchHandler)
+		branches.GET("", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionList),
+			handlers.GetAllBranchesHandler)
+		branches.GET("/search", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionList),
+			handlers.GetBranchSearchHandler)
+		branches.GET("/export", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionList),
+			handlers.ExportBranchesHandler) // Must be before /:id route
+		branches.GET("/parent/:parent_id/children", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionList),
+			handlers.GetChildBranchesHandler)
+		branches.GET("/:id", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionRead),
+			handlers.GetBranchHandler)
+		branches.PUT("/:id", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionUpdate),
+			handlers.UpdateBranchHandler)
+		branches.DELETE("/:id", 
+			middleware.RequirePermission(models.ResourceBranch, models.ActionDelete),
+			handlers.DeleteBranchHandler)
 	}
 
 	// Branch Infrastructure routes

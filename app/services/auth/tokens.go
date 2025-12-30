@@ -32,18 +32,20 @@ func HashRefreshToken(token string) []byte {
 }
 
 // GenerateAccessToken generates a JWT access token
-func GenerateAccessToken(userID int64, sessionID string) (string, error) {
+func GenerateAccessToken(userID int64, sessionID string, roleID int64, roleName string) (string, error) {
 	now := time.Now()
 	jti := uuid.New().String()
 
 	claims := jwt.MapClaims{
-		"sub": fmt.Sprintf("%d", userID), // Subject (user ID)
-		"sid": sessionID,                 // Session ID
-		"jti": jti,                       // JWT ID (unique token identifier)
-		"iat": now.Unix(),                // Issued at
-		"exp": now.Add(config.JWTTTL).Unix(), // Expiration
-		"iss": config.JWTIssuer,          // Issuer
-		"aud": config.JWTAudience,        // Audience
+		"sub":       fmt.Sprintf("%d", userID), // Subject (user ID)
+		"sid":       sessionID,                 // Session ID
+		"jti":       jti,                       // JWT ID (unique token identifier)
+		"iat":       now.Unix(),                // Issued at
+		"exp":       now.Add(config.JWTTTL).Unix(), // Expiration
+		"iss":       config.JWTIssuer,          // Issuer
+		"aud":       config.JWTAudience,        // Audience
+		"role_id":   roleID,                    // Role ID
+		"role_name": roleName,                  // Role Name
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -104,6 +106,30 @@ func ParseSessionIDFromToken(claims jwt.MapClaims) (string, error) {
 		return "", fmt.Errorf("invalid sid claim")
 	}
 	return sid, nil
+}
+
+// ParseRoleIDFromToken extracts role ID from JWT claims
+func ParseRoleIDFromToken(claims jwt.MapClaims) (int64, error) {
+	// Try to get as float64 (default JSON number type)
+	if roleIDFloat, ok := claims["role_id"].(float64); ok {
+		return int64(roleIDFloat), nil
+	}
+	
+	// Try to get as int64
+	if roleID, ok := claims["role_id"].(int64); ok {
+		return roleID, nil
+	}
+	
+	return 0, fmt.Errorf("invalid role_id claim")
+}
+
+// ParseRoleNameFromToken extracts role name from JWT claims
+func ParseRoleNameFromToken(claims jwt.MapClaims) (string, error) {
+	roleName, ok := claims["role_name"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid role_name claim")
+	}
+	return roleName, nil
 }
 
 // HashToken hashes a token (for verification/reset tokens) with pepper

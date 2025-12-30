@@ -109,6 +109,16 @@ definitions:
     - currentPassword
     - newPassword
     type: object
+  handlers.CheckPermissionRequest:
+    properties:
+      action:
+        type: string
+      resource:
+        type: string
+    required:
+    - action
+    - resource
+    type: object
   handlers.ChildBranchEntry:
     properties:
       address:
@@ -129,6 +139,16 @@ definitions:
         items:
           $ref: '#/definitions/handlers.SessionResponse'
         type: array
+    type: object
+  handlers.GrantPermissionRequest:
+    properties:
+      permission_id:
+        type: integer
+      role_id:
+        type: integer
+    required:
+    - permission_id
+    - role_id
     type: object
   handlers.InfrastructureEntry:
     properties:
@@ -192,6 +212,16 @@ definitions:
     required:
     - newPassword
     - token
+    type: object
+  handlers.RevokePermissionRequest:
+    properties:
+      permission_id:
+        type: integer
+      role_id:
+        type: integer
+    required:
+    - permission_id
+    - role_id
     type: object
   handlers.SessionResponse:
     properties:
@@ -516,6 +546,10 @@ definitions:
     properties:
       address:
         type: string
+      address_type:
+        type: string
+      area_covered:
+        type: string
       beneficiary_child:
         type: integer
       beneficiary_men:
@@ -562,6 +596,8 @@ definitions:
       language:
         type: string
       pincode:
+        type: string
+      police_station:
         type: string
       post_office:
         type: string
@@ -683,6 +719,25 @@ definitions:
       id:
         type: integer
       media_type:
+        type: string
+    type: object
+  models.Permission:
+    properties:
+      action:
+        description: e.g., "create", "read", "update", "delete"
+        type: string
+      created_on:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      resource:
+        description: e.g., "users", "events", "branches"
+        type: string
+      updated_on:
         type: string
     type: object
   models.PromotionMaterial:
@@ -923,6 +978,16 @@ definitions:
     - branch_id
     - event_id
     - volunteer_name
+    type: object
+  utils.Response:
+    properties:
+      data: {}
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
 info:
   contact:
@@ -4181,6 +4246,476 @@ paths:
       summary: Get all Promotion Material Types
       tags:
       - PromotionMaterialTypes
+  /api/rbac/check-permission:
+    post:
+      consumes:
+      - application/json
+      description: Check if the current user has a specific permission
+      parameters:
+      - description: Permission check request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CheckPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Check if user has permission
+      tags:
+      - RBAC
+  /api/rbac/my-permissions:
+    get:
+      consumes:
+      - application/json
+      description: Get all permissions for the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get current user's permissions
+      tags:
+      - RBAC
+  /api/rbac/permissions:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all permissions in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List all permissions
+      tags:
+      - RBAC
+    post:
+      consumes:
+      - application/json
+      description: Create a new permission in the system
+      parameters:
+      - description: Permission object
+        in: body
+        name: permission
+        required: true
+        schema:
+          $ref: '#/definitions/models.Permission'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new permission
+      tags:
+      - RBAC
+  /api/rbac/permissions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a permission from the system
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a permission
+      tags:
+      - RBAC
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific permission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get permission by ID
+      tags:
+      - RBAC
+  /api/rbac/role-permissions/grant:
+    post:
+      consumes:
+      - application/json
+      description: Grant a permission to a specific role
+      parameters:
+      - description: Grant permission request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.GrantPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Grant permission to role
+      tags:
+      - RBAC
+  /api/rbac/role-permissions/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a permission from a specific role
+      parameters:
+      - description: Revoke permission request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RevokePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Revoke permission from role
+      tags:
+      - RBAC
+  /api/rbac/role-permissions/role/{roleId}:
+    get:
+      consumes:
+      - application/json
+      description: Get all permissions assigned to a specific role
+      parameters:
+      - description: Role ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get permissions for a role
+      tags:
+      - RBAC
+  /api/rbac/roles:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all roles in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: List all roles
+      tags:
+      - RBAC
+    post:
+      consumes:
+      - application/json
+      description: Create a new role in the system
+      parameters:
+      - description: Role object
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - RBAC
+  /api/rbac/roles/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a role from the system
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a role
+      tags:
+      - RBAC
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Get role by ID
+      tags:
+      - RBAC
+    put:
+      consumes:
+      - application/json
+      description: Update an existing role
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Role object
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.Response'
+      security:
+      - BearerAuth: []
+      summary: Update a role
+      tags:
+      - RBAC
   /api/roles:
     get:
       description: Returns a list of all roles

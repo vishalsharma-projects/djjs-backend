@@ -179,14 +179,17 @@ func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
 
 // Login authenticates a user and creates a session
 func (s *AuthService) Login(ctx context.Context, email, password, ip, userAgent string) (*User, string, string, error) {
-	// Get user
+	// Get user with role information
 	var user User
+	var roleID int64
+	var roleName string
 	err := config.AuthDB.QueryRow(ctx,
-		`SELECT id, email, name, password, email_verified_at, disabled_at
-		 FROM users
-		 WHERE email = $1 AND is_deleted = false`,
+		`SELECT u.id, u.email, u.name, u.password, u.email_verified_at, u.disabled_at, u.role_id, r.name
+		 FROM users u
+		 JOIN roles r ON u.role_id = r.id
+		 WHERE u.email = $1 AND u.is_deleted = false`,
 		email).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash,
-		&user.EmailVerifiedAt, &user.DisabledAt)
+		&user.EmailVerifiedAt, &user.DisabledAt, &roleID, &roleName)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Generic error - don't reveal if user exists
@@ -239,8 +242,8 @@ func (s *AuthService) Login(ctx context.Context, email, password, ip, userAgent 
 		return nil, "", "", fmt.Errorf("failed to create session: %w", err)
 	}
 
-	// Generate access token
-	accessToken, err := GenerateAccessToken(user.ID, sessionID)
+	// Generate access token with role information
+	accessToken, err := GenerateAccessToken(user.ID, sessionID, roleID, roleName)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to generate access token: %w", err)
 	}
@@ -281,42 +284,45 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (st
 		return "", "", ErrSessionExpired
 	}
 
+	// Get user's role information
+	var roleID int64
+	var roleName string
+	err = config.AuthDB.QueryRow(ctx,
+		`SELECT u.role_id, r.name
+		 FROM users u
+		 JOIN roles r ON u.role_id = r.id
+		 WHERE u.id = $1`,
+		userID).Scan(&roleID, &roleName)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get user role: %w", err)
+	}
+
 	// Generate new refresh token
 	newRefreshToken, err := GenerateRandomToken(32)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
+		return "", "", fmt.Errorf("failed to generate new refresh token: %w", err)
 	}
 
 	newRefreshTokenHash := HashRefreshToken(newRefreshToken)
+	newExpiresAt := time.Now().Add(config.RefreshTokenTTL)
 
-	// Atomic rotation: update session with new token hash
-	// This ensures replay attacks fail (old token hash won't match after update)
-	result, err := config.AuthDB.Exec(ctx,
+	// Update session with new refresh token (token rotation)
+	_, err = config.AuthDB.Exec(ctx,
 		`UPDATE sessions
-		 SET refresh_token_hash = $1, last_used_at = NOW()
-		 WHERE id = $2 AND refresh_token_hash = $3 AND revoked_at IS NULL AND expires_at > NOW()`,
-		newRefreshTokenHash, sessionID, refreshTokenHash)
-
+		 SET refresh_token_hash = $1, last_used_at = NOW(), expires_at = $2
+		 WHERE id = $3`,
+		newRefreshTokenHash, newExpiresAt, sessionID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to rotate refresh token: %w", err)
+		return "", "", fmt.Errorf("failed to update session: %w", err)
 	}
 
-	rowsAffected := result.RowsAffected()
-	if rowsAffected != 1 {
-		// Token was already rotated, expired, or revoked
-		return "", "", ErrSessionNotFound
-	}
-
-	// Generate new access token
-	accessToken, err := GenerateAccessToken(userID, sessionID)
+	// Generate new access token with role information
+	newAccessToken, err := GenerateAccessToken(userID, sessionID, roleID, roleName)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate access token: %w", err)
+		return "", "", fmt.Errorf("failed to generate new access token: %w", err)
 	}
 
-	// Log audit event
-	_ = LogAuditEvent(ctx, AuditEventTokenRefreshed, &userID, "", "", map[string]interface{}{"session_id": sessionID})
-
-	return accessToken, newRefreshToken, nil
+	return newAccessToken, newRefreshToken, nil
 }
 
 // Logout revokes a session
