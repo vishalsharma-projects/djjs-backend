@@ -675,7 +675,10 @@ func UpdateBranchHandler(c *gin.Context) {
 		// Delete existing infra for branch
 		if existing, err := services.GetInfrastructureByBranch(uint(branchID)); err == nil {
 			for _, e := range existing {
-				_ = services.DeleteBranchInfrastructure(e.ID)
+				if err := services.DeleteBranchInfrastructure(e.ID); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing infrastructure: " + err.Error()})
+					return
+				}
 			}
 		}
 
@@ -686,10 +689,16 @@ func UpdateBranchHandler(c *gin.Context) {
 					infraType := ""
 					if v, ok := m["type"]; ok {
 						if s, ok := v.(string); ok {
-							infraType = s
+							infraType = strings.TrimSpace(s)
 						}
 					}
 
+					// Skip entries with empty type (validation)
+					if infraType == "" {
+						continue
+					}
+
+					// Parse count which may be number or string
 					number := 0
 					if v, ok := m["count"]; ok {
 						switch n := v.(type) {
@@ -697,11 +706,29 @@ func UpdateBranchHandler(c *gin.Context) {
 							if n != "" {
 								if val, err := strconv.Atoi(n); err == nil {
 									number = val
+								} else {
+									c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be numeric"})
+									return
 								}
 							}
 						case float64:
 							number = int(n)
+						case int:
+							number = n
+						case int64:
+							number = int(n)
+						case nil:
+							number = 0
+						default:
+							c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be a number or numeric string"})
+							return
 						}
+					}
+
+					// Validate count is not negative
+					if number < 0 {
+						c.JSON(http.StatusBadRequest, gin.H{"error": "infrastructure.count must be 0 or greater"})
+						return
 					}
 
 					infraModel := models.BranchInfrastructure{
@@ -710,7 +737,10 @@ func UpdateBranchHandler(c *gin.Context) {
 						Count:     number,
 						CreatedBy: "",
 					}
-					_ = services.CreateBranchInfrastructure(&infraModel)
+					if err := services.CreateBranchInfrastructure(&infraModel); err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create infrastructure: " + err.Error()})
+						return
+					}
 				}
 			}
 		}

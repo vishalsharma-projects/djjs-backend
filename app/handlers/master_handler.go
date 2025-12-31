@@ -415,3 +415,23 @@ func GetAllThemesHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, themes)
 }
+
+// --------------------- Infrastructure Types ---------------------
+
+// GetAllInfrastructureTypesHandler godoc
+// @Summary Get all infrastructure types
+// @Description Returns a list of all infrastructure types
+// @Tags InfrastructureTypes
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} models.InfrastructureType
+// @Failure 500 {object} map[string]string
+// @Router /api/infrastructure-types [get]
+func GetAllInfrastructureTypesHandler(c *gin.Context) {
+	types, err := services.GetAllInfrastructureTypesService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, types)
+}

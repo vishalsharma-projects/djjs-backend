@@ -53,3 +53,14 @@ type Theme struct {
 	CreatedOn time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
 	UpdatedOn *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
 }
+
+type InfrastructureType struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	Name      string     `gorm:"not null;unique" json:"name"`
+	CreatedOn time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
+	UpdatedOn *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
+}
+
+func (InfrastructureType) TableName() string {
+	return "infrastructure_types"
+}

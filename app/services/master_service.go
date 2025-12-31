@@ -202,3 +202,12 @@ func GetAllThemesService() ([]models.Theme, error) {
 	}
 	return themes, nil
 }
+
+// GetAllInfrastructureTypesService returns all infrastructure types
+func GetAllInfrastructureTypesService() ([]models.InfrastructureType, error) {
+	var types []models.InfrastructureType
+	if err := config.DB.Order("name ASC").Find(&types).Error; err != nil {
+		return nil, err
+	}
+	return types, nil
+}
