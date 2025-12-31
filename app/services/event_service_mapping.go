@@ -55,6 +55,25 @@ func MapFrontendPayloadToEvent(generalDetails map[string]interface{}, involvedPa
 		return nil, fmt.Errorf("eventCategory is required in generalDetails")
 	}
 
+	// Handle eventSubCategory - optional field
+	var eventSubCategoryName string
+	if val, ok := generalDetails["eventSubCategory"].(string); ok && val != "" {
+		eventSubCategoryName = val
+	} else if val, ok := generalDetails["event_sub_category"].(string); ok && val != "" {
+		eventSubCategoryName = val
+	}
+
+	if eventSubCategoryName != "" {
+		// Find event sub category ID by name (must belong to the selected category)
+		var eventSubCategory models.EventSubCategory
+		if err := config.DB.Where("name = ? AND event_category_id = ?", eventSubCategoryName, event.EventCategoryID).First(&eventSubCategory).Error; err == nil {
+			event.EventSubCategoryID = &eventSubCategory.ID
+		} else {
+			// If sub category not found, log warning but don't fail (it's optional)
+			fmt.Printf("Warning: event sub category '%s' not found for category ID %d\n", eventSubCategoryName, event.EventCategoryID)
+		}
+	}
+
 	if scale, ok := generalDetails["scale"].(string); ok {
 		event.Scale = scale
 	}

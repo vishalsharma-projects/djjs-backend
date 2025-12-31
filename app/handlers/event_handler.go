@@ -443,6 +443,12 @@ func UpdateEventHandler(c *gin.Context) {
 		if event.EventCategoryID > 0 {
 			updateData["event_category_id"] = event.EventCategoryID
 		}
+		if event.EventSubCategoryID != nil && *event.EventSubCategoryID > 0 {
+			updateData["event_sub_category_id"] = *event.EventSubCategoryID
+		} else {
+			// If eventSubCategoryID is nil or 0, set it to NULL in database
+			updateData["event_sub_category_id"] = nil
+		}
 		if event.Scale != "" {
 			updateData["scale"] = event.Scale
 		}
@@ -488,9 +494,8 @@ func UpdateEventHandler(c *gin.Context) {
 		if event.Address != "" {
 			updateData["address"] = event.Address
 		}
-		if event.AddressType != "" {
-			updateData["address_type"] = event.AddressType
-		}
+		// Always update address_type (even if empty) to allow clearing it
+		updateData["address_type"] = event.AddressType
 		if event.PoliceStation != "" {
 			updateData["police_station"] = event.PoliceStation
 		}

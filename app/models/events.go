@@ -142,6 +142,9 @@ type EventDetails struct {
 	EventCategoryID uint          `json:"event_category_id"`
 	EventCategory   EventCategory `gorm:"foreignKey:EventCategoryID" json:"event_category,omitempty"`
 
+	EventSubCategoryID *uint            `json:"event_sub_category_id,omitempty"`
+	EventSubCategory   *EventSubCategory `gorm:"foreignKey:EventSubCategoryID" json:"event_sub_category,omitempty"`
+
 	Scale           string     `json:"scale,omitempty"`
 	Theme           string     `json:"theme,omitempty"`
 	StartDate       time.Time  `json:"start_date,omitempty"`

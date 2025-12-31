@@ -29,6 +29,7 @@ func GetAllEvents(statusFilter string) ([]models.EventDetails, error) {
 	db := config.DB.
 		Preload("EventType").
 		Preload("EventCategory").
+		Preload("EventSubCategory").
 		Preload("Branch")
 
 	// Apply status filter if provided
@@ -201,6 +202,7 @@ func GetEventByID(eventID uint) (*models.EventDetails, error) {
 	if err := config.DB.
 		Preload("EventType").
 		Preload("EventCategory").
+		Preload("EventSubCategory").
 		Preload("Branch").
 		First(&event, eventID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -245,6 +247,7 @@ func GetEventsByDateRange(startDate *time.Time, endDate *time.Time, statusFilter
 	db := config.DB.
 		Preload("EventType").
 		Preload("EventCategory").
+		Preload("EventSubCategory").
 		Preload("Branch")
 
 	// Apply status filter if provided
