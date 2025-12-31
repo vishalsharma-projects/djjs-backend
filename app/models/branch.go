@@ -72,8 +72,8 @@ type BranchMember struct {
 	DateOfSamarpan *time.Time `json:"date_of_samarpan,omitempty"`
 	Qualification  string     `json:"qualification,omitempty" validate:"omitempty,max=255"`
 	DateOfBirth    *time.Time `json:"date_of_birth,omitempty"`
-	BranchID       uint       `gorm:"not null" json:"branch_id" validate:"required,min=1"`
-	Branch         Branch     `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	BranchID       *uint      `gorm:"column:branch_id" json:"branch_id,omitempty" validate:"omitempty,min=1"`
+	Branch         *Branch    `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	CreatedOn      time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
 	UpdatedOn      *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
 	CreatedBy      string     `json:"created_by,omitempty"`

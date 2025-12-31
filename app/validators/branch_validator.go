@@ -377,7 +377,7 @@ func ValidateBranchInfrastructure(branchID uint, infraType string, count int) er
 }
 
 // ValidateBranchMember validates branch member data
-func ValidateBranchMember(name, memberType string, branchID uint) error {
+func ValidateBranchMember(name, memberType string, branchID *uint) error {
 	if strings.TrimSpace(name) == "" {
 		return errors.New("member name is required")
 	}
@@ -390,8 +390,10 @@ func ValidateBranchMember(name, memberType string, branchID uint) error {
 		return errors.New("member type is required")
 	}
 
-	if branchID == 0 {
-		return errors.New("branch_id is required and must be greater than 0")
+	// BranchID is optional, so we don't validate it here
+	// If provided, it should be greater than 0
+	if branchID != nil && *branchID == 0 {
+		return errors.New("branch_id must be greater than 0 if provided")
 	}
 
 	return nil
@@ -441,7 +443,6 @@ func ValidateBranchMemberUpdateFields(updateData map[string]interface{}) error {
 		"id":         true,
 		"created_on": true,
 		"created_by": true,
-		"branch_id":  true, // branch should not be changed via update
 	}
 
 	for field := range updateData {
@@ -465,6 +466,35 @@ func ValidateBranchMemberUpdateFields(updateData map[string]interface{}) error {
 		ageVal, _ := age.(float64)
 		if ageVal < 0 || ageVal > 150 {
 			return errors.New("age must be between 0 and 150")
+		}
+	}
+
+	// Validate branch_id if provided (can be nil to unassign, or a valid branch ID)
+	if branchID, ok := updateData["branch_id"]; ok {
+		if branchID == nil {
+			// Allow nil to unassign branch
+			return nil
+		}
+		// Convert to uint and validate
+		var branchIDVal uint
+		switch v := branchID.(type) {
+		case float64:
+			branchIDVal = uint(v)
+		case uint:
+			branchIDVal = v
+		case int:
+			branchIDVal = uint(v)
+		case *uint:
+			if v == nil {
+				// Allow nil to unassign
+				return nil
+			}
+			branchIDVal = *v
+		default:
+			return errors.New("invalid branch_id type")
+		}
+		if branchIDVal == 0 {
+			return errors.New("branch_id must be greater than 0 if provided")
 		}
 	}
 

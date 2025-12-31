@@ -1004,7 +1004,7 @@ type BranchMemberCreateRequest struct {
 	Qualification  string  `json:"qualification,omitempty"`
 	DateOfBirth    *string `json:"date_of_birth,omitempty"`
 	DateOfSamarpan *string `json:"date_of_samarpan,omitempty"`
-	BranchID       uint    `json:"branch_id" binding:"required"`
+	BranchID       *uint   `json:"branch_id,omitempty"`
 }
 
 // ToBranchMember converts the request to a BranchMember model
@@ -1305,3 +1305,4 @@ func DeleteBranchMemberHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Branch member deleted successfully"})
 }
+

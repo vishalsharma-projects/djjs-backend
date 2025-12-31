@@ -638,6 +638,44 @@ func UpdateBranchMember(id uint, updatedData map[string]interface{}) error {
 		}
 	}
 
+	// Handle branch_id update - convert to *uint (pointer) to allow nil for unassigning
+	if branchID, ok := updatedData["branch_id"]; ok {
+		if branchID == nil {
+			// Set to nil to unassign branch
+			updatedData["branch_id"] = nil
+		} else {
+			// Convert to uint pointer
+			var branchIDVal uint
+			switch v := branchID.(type) {
+			case float64:
+				branchIDVal = uint(v)
+			case uint:
+				branchIDVal = v
+			case int:
+				branchIDVal = uint(v)
+			case *uint:
+				if v == nil {
+					updatedData["branch_id"] = nil
+				} else {
+					branchIDVal = *v
+				}
+			default:
+				return errors.New("invalid branch_id type")
+			}
+			if branchIDVal > 0 {
+				// Validate that the branch exists
+				var branch models.Branch
+				if err := config.DB.First(&branch, branchIDVal).Error; err != nil {
+					return errors.New("invalid branch_id: branch not found")
+				}
+				// Convert to pointer for the model
+				updatedData["branch_id"] = &branchIDVal
+			} else {
+				return errors.New("branch_id must be greater than 0 if provided")
+			}
+		}
+	}
+
 	now := time.Now()
 	updatedData["updated_on"] = &now
 
