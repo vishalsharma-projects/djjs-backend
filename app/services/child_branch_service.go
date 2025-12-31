@@ -175,6 +175,17 @@ func DeleteChildBranch(childBranchID uint) error {
 
 // CreateChildBranchInfrastructure creates a new child branch infrastructure record
 func CreateChildBranchInfrastructure(infra *models.BranchInfrastructure) error {
+	// Validate required fields
+	if infra.BranchID == 0 {
+		return errors.New("branch_id is required")
+	}
+	if infra.Type == "" {
+		return errors.New("type is required")
+	}
+	if infra.Count < 0 {
+		return errors.New("count must be 0 or greater")
+	}
+
 	infra.CreatedOn = time.Now()
 	if err := config.DB.Create(infra).Error; err != nil {
 		return err

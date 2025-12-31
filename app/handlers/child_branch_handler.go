@@ -239,14 +239,31 @@ func DeleteChildBranchHandler(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
+// @Param id path int true "Child Branch ID"
 // @Param infrastructure body models.BranchInfrastructure true "Infrastructure Data"
 // @Success 201 {object} models.BranchInfrastructure
 // @Failure 400 {object} map[string]string
 // @Router /api/child-branches/{id}/infrastructure [post]
 func CreateChildBranchInfrastructureHandler(c *gin.Context) {
+	idParam := c.Param("id")
+	childBranchID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid child branch ID"})
+		return
+	}
+
 	var infra models.BranchInfrastructure
 	if err := c.ShouldBindJSON(&infra); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set branch_id from URL parameter (override any branch_id in payload)
+	infra.BranchID = uint(childBranchID)
+
+	// Validate required fields
+	if infra.Type == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type is required"})
 		return
 	}
 
