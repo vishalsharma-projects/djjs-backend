@@ -36,7 +36,8 @@ func VerifyPassword(hashedPassword, plainPassword string) bool {
 }
 
 // CreateUser inserts a new user record
-func CreateUser(user *models.User) error {
+// Password must be provided and will be validated for strength
+func CreateUser(user *models.User, plainPassword string) error {
 	// Validate that role exists
 	var role models.Role
 	if err := config.DB.First(&role, user.RoleID).Error; err != nil {
@@ -49,7 +50,12 @@ func CreateUser(user *models.User) error {
 		return errors.New("email already exists")
 	}
 
-	plainPassword := generateRandomPassword()
+	// Validate password is provided
+	if plainPassword == "" {
+		return errors.New("password is required and cannot be empty")
+	}
+
+	// Hash the provided password
 	hashedPassword, err := HashPassword(plainPassword)
 	if err != nil {
 		return err
@@ -72,8 +78,6 @@ func CreateUser(user *models.User) error {
 		UPDATE users SET email_verified_at = NOW() WHERE id = ? AND (email_verified_at IS NULL OR email_verified_at = '1970-01-01'::timestamp)
 	`, user.ID)
 
-	// Return the plain password to the caller for display
-	user.Password = plainPassword
 	return nil
 }
 

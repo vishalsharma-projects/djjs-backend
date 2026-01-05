@@ -10,32 +10,56 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CreateUserRequest represents the user creation payload
+type CreateUserRequest struct {
+	Name          string `json:"name" binding:"required"`
+	Email         string `json:"email" binding:"required,email"`
+	ContactNumber string `json:"contact_number,omitempty"`
+	Password      string `json:"password" binding:"required"`
+	RoleID        uint   `json:"role_id" binding:"required"`
+}
+
 // CreateUserHandler godoc
 // @Summary Create a new user
-// @Description Create user with auto-generated password (returned in response)
+// @Description Create user with mandatory password. Password must meet strength requirements.
 // @Tags Users
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param user body models.User true "User payload"
+// @Param user body CreateUserRequest true "User payload with password"
 // @Success 201 {object} models.CreateUserResponse
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/users [post]
 func CreateUserHandler(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request format"})
 		return
 	}
 
-	// Validate user input
-	if err := validators.ValidateUserInput(user.Name, user.Email, user.ContactNumber, user.RoleID); err != nil {
+	// Validate user input (name, email, contact, role)
+	if err := validators.ValidateUserInput(req.Name, req.Email, req.ContactNumber, req.RoleID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := services.CreateUser(&user); err != nil {
+	// Validate password strength
+	if err := validators.ValidatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create user model
+	user := models.User{
+		Name:          req.Name,
+		Email:         req.Email,
+		ContactNumber: req.ContactNumber,
+		RoleID:        req.RoleID,
+	}
+
+	// Create user with provided password
+	if err := services.CreateUser(&user, req.Password); err != nil {
 		// Check if it's an email already exists error
 		if err.Error() == "email already exists" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Email ID already exists. Please use a different email."})
@@ -48,7 +72,7 @@ func CreateUserHandler(c *gin.Context) {
 	response := models.CreateUserResponse{
 		Message:  "User created successfully",
 		User:     user,
-		Password: user.Password, // show auto-generated password
+		Password: "", // Don't return password for security
 	}
 	c.JSON(http.StatusCreated, response)
 }

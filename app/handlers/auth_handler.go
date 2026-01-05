@@ -7,6 +7,7 @@ import (
 
 	"github.com/followCode/djjs-event-reporting-backend/app/middleware"
 	"github.com/followCode/djjs-event-reporting-backend/app/services/auth"
+	"github.com/followCode/djjs-event-reporting-backend/app/validators"
 	"github.com/followCode/djjs-event-reporting-backend/config"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -339,19 +340,25 @@ type ResetPasswordRequest struct {
 
 // ResetPassword godoc
 // @Summary Reset password
-// @Description Reset password using the token received via email from forgot-password endpoint.
+// @Description Reset password using the token received via email from forgot-password endpoint. New password must meet strength requirements.
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param resetPasswordRequest body ResetPasswordRequest true "Password reset payload"
 // @Success 200 {object} map[string]string "Password reset successful"
-// @Failure 400 {object} map[string]string "Invalid token, expired token, or token already used"
+// @Failure 400 {object} map[string]string "Invalid token, expired token, token already used, or password doesn't meet requirements"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Validate new password strength
+	if err := validators.ValidatePasswordStrength(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -380,14 +387,14 @@ type ChangePasswordRequest struct {
 
 // ChangePassword godoc
 // @Summary Change password
-// @Description Change password for the currently authenticated user. Requires current password.
+// @Description Change password for the currently authenticated user. Requires current password. New password must meet strength requirements.
 // @Tags Auth
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
 // @Param changePasswordRequest body ChangePasswordRequest true "Password change payload"
 // @Success 200 {object} map[string]string "Password changed successfully"
-// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 400 {object} map[string]string "Invalid request or password doesn't meet requirements"
 // @Failure 401 {object} map[string]string "Unauthorized or invalid current password"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/auth/change-password [post]
@@ -401,6 +408,18 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Validate new password strength
+	if err := validators.ValidatePasswordStrength(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if new password is different from current password
+	if req.CurrentPassword == req.NewPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new password must be different from current password"})
 		return
 	}
 
