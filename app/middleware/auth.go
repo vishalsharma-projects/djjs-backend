@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/followCode/djjs-event-reporting-backend/app/models"
 	"github.com/followCode/djjs-event-reporting-backend/app/services/auth"
+	"github.com/followCode/djjs-event-reporting-backend/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -128,5 +130,29 @@ func GetSessionID(c *gin.Context) (string, bool) {
 	sid, ok := sessionID.(string)
 	return sid, ok
 }
+
+// GetUserEmail extracts user email from gin context
+// This function queries the database to get the user's email based on the user ID
+func GetUserEmail(c *gin.Context) (string, bool) {
+	userID, exists := GetUserID(c)
+	if !exists {
+		return "", false
+	}
+	
+	// Query database to get user email
+	var email string
+	err := config.DB.Model(&models.User{}).
+		Where("id = ? AND is_deleted = false", userID).
+		Select("email").
+		Scan(&email).Error
+	
+	if err != nil {
+		return "", false
+	}
+	
+	return email, true
+}
+
+
 
 

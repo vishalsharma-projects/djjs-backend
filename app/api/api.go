@@ -37,6 +37,7 @@ func SetupRoutes(r *gin.Engine) {
 		SetupFileRoutes(api)
 		SetupBranchMediaRoutes(api)
 		SetupChildBranchMediaRoutes(api)
+		SetupUserPreferencesRoutes(api)
 
 		// RBAC routes
 		rbacHandler := handlers.NewRBACHandler(config.DB)
