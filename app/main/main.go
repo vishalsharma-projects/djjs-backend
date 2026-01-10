@@ -12,6 +12,7 @@
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
+// @description JWT Bearer token authentication. You can provide the token with or without the "Bearer " prefix. Examples: "Bearer eyJhbGci..." or "eyJhbGci..."
 
 // @BasePath /
 package main

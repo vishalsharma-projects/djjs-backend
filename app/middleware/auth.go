@@ -29,15 +29,30 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Extract Bearer token
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
+		// Extract Bearer token - handle both "Bearer <token>" and raw token formats
+		var tokenString string
+		authHeader = strings.TrimSpace(authHeader)
+		
+		// Check if it starts with "Bearer " (case-insensitive)
+		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
+				c.Abort()
+				return
+			}
+			tokenString = strings.TrimSpace(parts[1])
+		} else {
+			// If no "Bearer " prefix, assume the entire header is the token
+			// This supports Swagger UI's ApiKeyAuth which sends raw tokens
+			tokenString = authHeader
+		}
+		
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is empty"})
 			c.Abort()
 			return
 		}
-
-		tokenString := parts[1]
 
 		// Verify and parse token
 		claims, err := auth.VerifyAccessToken(tokenString)
