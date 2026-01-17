@@ -29,5 +29,6 @@ func (UserPreferences) TableName() string {
 type EventsListColumnPreferences struct {
 	HiddenColumns []string `json:"hidden_columns"`
 	PinnedColumns []string `json:"pinned_columns"`
+	ColumnOrder   []string `json:"column_order"`
 }
 

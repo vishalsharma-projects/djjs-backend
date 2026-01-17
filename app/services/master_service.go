@@ -132,13 +132,10 @@ func GetCoordinatorDropdownService() ([]models.BranchMember, error) {
 }
 
 // GetOratorDropdownService
-func GetOratorDropdownService() ([]models.BranchMember, error) {
-	var list []models.BranchMember
+func GetOratorDropdownService() ([]models.Orator, error) {
+	var list []models.Orator
 
 	err := config.DB.
-		Model(&models.BranchMember{}).
-		Select("id, name").
-		Where("branch_role IN ?", []string{"Coordinator", "Preacher"}).
 		Order("name ASC").
 		Find(&list).Error
 
@@ -165,6 +162,15 @@ func GetAllSevaTypesService() ([]models.SevaType, error) {
 		return nil, err
 	}
 	return sevaTypes, nil
+}
+
+// GetAllPrefixesService returns all prefixes
+func GetAllPrefixesService() ([]models.Prefix, error) {
+	var prefixes []models.Prefix
+	if err := config.DB.Order("name ASC").Find(&prefixes).Error; err != nil {
+		return nil, err
+	}
+	return prefixes, nil
 }
 
 // GetAllEventSubCategoriesService returns all event sub categories

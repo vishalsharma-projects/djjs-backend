@@ -147,6 +147,10 @@ func MapFrontendPayloadToEvent(generalDetails map[string]interface{}, involvedPa
 	}
 
 	if spiritualOrator, ok := generalDetails["spiritualOrator"].(string); ok {
+		// Handle comma-separated multiple orators
+		if len(spiritualOrator) > 200 {
+			return nil, fmt.Errorf("spiritual_orator must not exceed 200 characters")
+		}
 		event.SpiritualOrator = spiritualOrator
 	}
 

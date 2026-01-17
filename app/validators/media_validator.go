@@ -2,6 +2,7 @@ package validators
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 )
 
@@ -102,8 +103,13 @@ func ValidateEventMediaUpdateFields(updateData map[string]interface{}) error {
 	if companyEmail, ok := updateData["company_email"]; ok {
 		emailStr := strings.TrimSpace(companyEmail.(string))
 		if emailStr != "" {
-			if !isValidEmail(emailStr) {
-				return errors.New("invalid company_email format")
+			// Validate length (VARCHAR(500) in database)
+			if len(emailStr) > 500 {
+				return errors.New("company_email must not exceed 500 characters")
+			}
+			// Validate comma-separated emails
+			if !isValidEmailOrEmails(emailStr) {
+				return errors.New("invalid company_email format (must be valid email(s) separated by commas)")
 			}
 		}
 	}
@@ -111,8 +117,13 @@ func ValidateEventMediaUpdateFields(updateData map[string]interface{}) error {
 	if email, ok := updateData["email"]; ok {
 		emailStr := strings.TrimSpace(email.(string))
 		if emailStr != "" {
-			if !isValidEmail(emailStr) {
-				return errors.New("invalid email format")
+			// Validate length (VARCHAR(500) in database)
+			if len(emailStr) > 500 {
+				return errors.New("email must not exceed 500 characters")
+			}
+			// Validate comma-separated emails
+			if !isValidEmailOrEmails(emailStr) {
+				return errors.New("invalid email format (must be valid email(s) separated by commas)")
 			}
 		}
 	}
@@ -134,4 +145,20 @@ func ValidateEventMediaUpdateFields(updateData map[string]interface{}) error {
 	}
 
 	return nil
+}
+
+// isValidEmailOrEmails validates a single email or comma-separated emails
+func isValidEmailOrEmails(emailStr string) bool {
+	const emailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	re := regexp.MustCompile(emailRegex)
+	
+	// Split by comma and validate each email
+	emails := strings.Split(emailStr, ",")
+	for _, email := range emails {
+		trimmedEmail := strings.TrimSpace(email)
+		if trimmedEmail != "" && !re.MatchString(trimmedEmail) {
+			return false
+		}
+	}
+	return true
 }

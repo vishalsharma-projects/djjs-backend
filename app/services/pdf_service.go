@@ -247,8 +247,10 @@ func GenerateEventPDF(event *models.EventDetails, specialGuests []models.Special
 				details = details[:27] + "..."
 			}
 			amountStr := fmt.Sprintf("%.2f", donation.Amount)
+			// Format donation type for display
+			formattedType := formatDonationTypeForDisplay(donation.DonationType)
 			rows := [][]string{
-				{donation.DonationType, details, amountStr},
+				{formattedType, details, amountStr},
 			}
 			for _, row := range rows {
 				for i, cell := range row {
@@ -394,6 +396,33 @@ func addField(pdf *gofpdf.Fpdf, label, value string, labelWidth, lineHeight floa
 }
 
 // Helper function for compact fields in media section
+// formatDonationTypeForDisplay formats donation type with proper capitalization
+func formatDonationTypeForDisplay(donationType string) string {
+	if donationType == "" {
+		return "N/A"
+	}
+	
+	lowerType := strings.ToLower(strings.TrimSpace(donationType))
+	switch lowerType {
+	case "cash":
+		return "Cash-Bank-Online"
+	case "in-kind", "inkind":
+		return "In-Kind"
+	default:
+		// Capitalize first letter of each word separated by hyphens
+		parts := strings.Split(donationType, "-")
+		formattedParts := make([]string, len(parts))
+		for i, part := range parts {
+			if len(part) > 0 {
+				formattedParts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
+			} else {
+				formattedParts[i] = part
+			}
+		}
+		return strings.Join(formattedParts, "-")
+	}
+}
+
 func addFieldCompact(pdf *gofpdf.Fpdf, label, value string, labelWidth, lineHeight float64) {
 	if value == "" {
 		return

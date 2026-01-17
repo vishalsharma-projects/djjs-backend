@@ -269,7 +269,7 @@ func GetCoordinatorDropdownHandler(c *gin.Context) {
 // @Tags Orator
 // @Security ApiKeyAuth
 // @Produce json
-// @Success 200 {array} models.BranchMember
+// @Success 200 {array} models.Orator
 // @Failure 500 {object} map[string]string
 // @Router /api/orators [get]
 func GetOratorDropdownHandler(c *gin.Context) {
@@ -321,6 +321,26 @@ func GetAllSevaTypesHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, sevaTypes)
+}
+
+// --------------------- Prefixes ---------------------
+
+// GetAllPrefixesHandler godoc
+// @Summary Get all prefixes
+// @Description Returns a list of all prefixes
+// @Tags Prefixes
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} models.Prefix
+// @Failure 500 {object} map[string]string
+// @Router /api/prefixes [get]
+func GetAllPrefixesHandler(c *gin.Context) {
+	prefixes, err := services.GetAllPrefixesService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, prefixes)
 }
 
 // --------------------- Event Sub Categories ---------------------

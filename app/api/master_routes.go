@@ -30,6 +30,7 @@ func SetupMasterRoutes(r *gin.RouterGroup) {
 		master.GET("/roles", handlers.GetAllRolesHandler)
 		master.GET("/themes", handlers.GetAllThemesHandler)
 		master.GET("/infrastructure-types", handlers.GetAllInfrastructureTypesHandler)
+		master.GET("/prefixes", handlers.GetAllPrefixesHandler)
 	}
 }
 

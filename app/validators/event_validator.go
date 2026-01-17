@@ -144,5 +144,14 @@ func ValidateEventUpdateFields(updateData map[string]interface{}) error {
 		}
 	}
 
+	// Validate spiritual_orator if present (can be comma-separated for multiple orators)
+	if spiritualOrator, ok := updateData["spiritual_orator"]; ok {
+		if spiritualOratorStr, ok := spiritualOrator.(string); ok {
+			if len(spiritualOratorStr) > 200 {
+				return errors.New("spiritual_orator must not exceed 200 characters")
+			}
+		}
+	}
+
 	return nil
 }

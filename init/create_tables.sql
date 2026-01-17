@@ -296,3 +296,34 @@ CREATE TABLE cities (
     name VARCHAR(100) NOT NULL,
     state_id INTEGER NOT NULL REFERENCES states(id)
 );
+
+-- Create Orators master data table
+CREATE TABLE orators (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    created_on TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_on TIMESTAMPTZ,
+    created_by VARCHAR(30),
+    updated_by VARCHAR(30)
+);
+
+-- Create Languages master data table
+CREATE TABLE languages (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    code VARCHAR(10) NOT NULL UNIQUE,
+    created_on TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_on TIMESTAMPTZ,
+    created_by VARCHAR(30),
+    updated_by VARCHAR(30)
+);
+
+-- Create Prefixes master data table
+CREATE TABLE prefixes (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_on TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_on TIMESTAMPTZ,
+    created_by VARCHAR(30),
+    updated_by VARCHAR(30)
+);

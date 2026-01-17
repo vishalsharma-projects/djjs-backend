@@ -64,3 +64,21 @@ type InfrastructureType struct {
 func (InfrastructureType) TableName() string {
 	return "infrastructure_types"
 }
+
+type Orator struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	Name      string     `gorm:"not null;unique" json:"name"`
+	CreatedOn time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
+	UpdatedOn *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
+}
+
+func (Orator) TableName() string {
+	return "orators"
+}
+
+type Prefix struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	Name      string     `gorm:"not null;unique" json:"name"`
+	CreatedOn time.Time  `gorm:"autoCreateTime" json:"created_on,omitempty"`
+	UpdatedOn *time.Time `gorm:"autoUpdateTime" json:"updated_on,omitempty"`
+}

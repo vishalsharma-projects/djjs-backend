@@ -100,3 +100,46 @@ INSERT INTO cities (id, name, state_id) VALUES
 (8, 'Nagpur City', 2),
 (9, 'Gulbarga City', 3),
 (10, 'Varanasi City', 1);
+
+-- Insert Orators master data
+INSERT INTO orators (name, created_by) VALUES
+('Swami Ji', 'system'),
+('Swami Vivek', 'system'),
+('Swami Anand', 'system'),
+('Swami Prem', 'system'),
+('Swami Shanti', 'system'),
+('Dr. Anya Sharma', 'system'),
+('Dr. Rohan Verma', 'system'),
+('Swami Krishna', 'system'),
+('Swami Radha', 'system'),
+('Swami Gyan', 'system');
+
+-- Insert Languages master data
+INSERT INTO languages (name, code, created_by) VALUES
+('Hindi', 'hi', 'system'),
+('English', 'en', 'system'),
+('Sanskrit', 'sa', 'system'),
+('Gujarati', 'gu', 'system'),
+('Marathi', 'mr', 'system'),
+('Bengali', 'bn', 'system'),
+('Tamil', 'ta', 'system'),
+('Telugu', 'te', 'system'),
+('Kannada', 'kn', 'system'),
+('Malayalam', 'ml', 'system'),
+('Punjabi', 'pa', 'system'),
+('Urdu', 'ur', 'system'),
+('Odia', 'or', 'system'),
+('Assamese', 'as', 'system');
+
+-- Insert Prefixes master data
+INSERT INTO prefixes (name, created_by) VALUES
+('Mr.', 'system'),
+('Mrs.', 'system'),
+('Ms.', 'system'),
+('Dr.', 'system'),
+('Prof.', 'system'),
+('Shri', 'system'),
+('Smt.', 'system'),
+('Shrimati', 'system'),
+('Kumari', 'system'),
+('Swami', 'system');
