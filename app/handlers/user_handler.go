@@ -17,6 +17,16 @@ type CreateUserRequest struct {
 	ContactNumber string `json:"contact_number,omitempty"`
 	Password      string `json:"password" binding:"required"`
 	RoleID        uint   `json:"role_id" binding:"required"`
+	BranchID      *uint  `json:"branch_id,omitempty"`
+}
+
+// UpdateUserRequest represents the user update payload
+type UpdateUserRequest struct {
+	Name          string `json:"name,omitempty"`
+	Email         string `json:"email,omitempty"`
+	ContactNumber string `json:"contact_number,omitempty"`
+	RoleID        uint   `json:"role_id,omitempty"`
+	BranchID      *uint  `json:"branch_id,omitempty"`
 }
 
 // CreateUserHandler godoc
@@ -56,9 +66,11 @@ func CreateUserHandler(c *gin.Context) {
 		Email:         req.Email,
 		ContactNumber: req.ContactNumber,
 		RoleID:        req.RoleID,
+		BranchID:      req.BranchID,
 	}
 
 	// Create user with provided password
+	// Include BranchID if provided
 	if err := services.CreateUser(&user, req.Password); err != nil {
 		// Check if it's an email already exists error
 		if err.Error() == "email already exists" {
@@ -164,7 +176,7 @@ func GetUserByIDHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "User ID"
-// @Param user body map[string]interface{} true "Updated fields"
+// @Param user body UpdateUserRequest true "Updated fields"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -177,10 +189,28 @@ func UpdateUserHandler(c *gin.Context) {
 		return
 	}
 
-	var updateData map[string]interface{}
-	if err := c.ShouldBindJSON(&updateData); err != nil {
+	var req UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Convert UpdateUserRequest to map[string]interface{}
+	updateData := make(map[string]interface{})
+	if req.Name != "" {
+		updateData["name"] = req.Name
+	}
+	if req.Email != "" {
+		updateData["email"] = req.Email
+	}
+	if req.ContactNumber != "" {
+		updateData["contact_number"] = req.ContactNumber
+	}
+	if req.RoleID != 0 {
+		updateData["role_id"] = req.RoleID
+	}
+	if req.BranchID != nil {
+		updateData["branch_id"] = req.BranchID
 	}
 
 	// Validate update fields
