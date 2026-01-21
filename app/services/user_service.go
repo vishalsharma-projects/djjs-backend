@@ -84,7 +84,7 @@ func CreateUser(user *models.User, plainPassword string) error {
 // GetAllUsers fetches all users (excluding deleted)
 func GetAllUsers() ([]models.User, error) {
 	var users []models.User
-	if err := config.DB.Preload("Role").Where("is_deleted = ?", false).Find(&users).Error; err != nil {
+	if err := config.DB.Preload("Role").Preload("Branch").Where("is_deleted = ?", false).Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -93,7 +93,7 @@ func GetAllUsers() ([]models.User, error) {
 // GetUserSearch fetches users by email, contact (excluding deleted)
 func GetUserSearch(email, contact string) ([]models.User, error) {
 	var users []models.User
-	query := config.DB.Model(&models.User{}).Preload("Role").Where("is_deleted = ?", false)
+	query := config.DB.Model(&models.User{}).Preload("Role").Preload("Branch").Where("is_deleted = ?", false)
 
 	// Dynamically build WHERE conditions
 	if email != "" && contact != "" {
@@ -122,7 +122,7 @@ func GetUserSearch(email, contact string) ([]models.User, error) {
 // GetUserByID fetches a single user by ID
 func GetUserByID(userID uint) (*models.User, error) {
 	var user models.User
-	if err := config.DB.Preload("Role").Where("id = ? AND is_deleted = ?", userID, false).First(&user).Error; err != nil {
+	if err := config.DB.Preload("Role").Preload("Branch").Where("id = ? AND is_deleted = ?", userID, false).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}

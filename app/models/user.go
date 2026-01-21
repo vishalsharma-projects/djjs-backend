@@ -22,7 +22,9 @@ type User struct {
 	ContactNumber string     `json:"contact_number,omitempty" validate:"omitempty,max=20"`
 	Password      string     `gorm:"not null" json:"password,omitempty"`
 	RoleID        uint       `gorm:"not null" json:"role_id" validate:"required"`
+	BranchID      *uint      `gorm:"column:branch_id" json:"branch_id,omitempty"`
 	Role          Role       `gorm:"foreignKey:RoleID" json:"role,omitempty"`
+	Branch        *Branch    `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	Token         string     `json:"token,omitempty"`
 	ExpiredOn     *time.Time `json:"expired_on,omitempty"`
 	LastLoginOn   *time.Time `json:"last_login_on,omitempty"`
